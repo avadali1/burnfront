@@ -163,8 +163,9 @@ def port_sdf(shape, grid, chi, port_band_cells=3, mesh_refine=1):
     h = min(hx, hy)
     ds = h/mesh_refine
     dz = min(h, hz)/mesh_refine
-    ext = (port_band_cells + 4)*max(h, hz)  # continue the surface past the ends (extrapolation BC)
-    V, F = surface_mesh(shape, grid.z[0] - ext, grid.z[-1] + ext, ds, dz)
+    # Surface truncated at the end faces (inhibited ends): fuel near an end is reached only by the
+    # port surface inside the grain, the same convention as CAD grains (hrap.burn3d.cad)
+    V, F = surface_mesh(shape, grid.z[0], grid.z[-1], ds, dz)
     f = evaluate(shape.f, grid)
     chi = np.broadcast_to(chi, grid.shape)
     # In-slice |f| >= true 3D distance, so this port-side test is a superset of the needed band

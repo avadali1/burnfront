@@ -8,8 +8,8 @@ Conventions
   (case wall): negative inside. Fuel = {phi > 0} & {chi < 0}; port = {max(phi, chi) < 0}.
 - The front regresses into the fuel at the local normal speed rdot(z):
   phi_t + rdot |grad phi| = 0, advanced with its exact Hopf-Lax solution (default) or WENO5.
-  End faces are inhibited: only the port surface inside z in [z0, z0+L] burns, and the surface is
-  continued past the ends for the distance field.
+  End faces are inhibited: only the port surface inside z in [z0, z0+L] burns, and distances are
+  measured to that truncated surface.
 
 Verified accuracy (tests/test_burn3d.py): port areas, burn-through time and burned mass converge at
 second order in the cell size; the initial burning perimeter at infinitely sharp corners is first
