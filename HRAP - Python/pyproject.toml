@@ -28,6 +28,19 @@ dependencies = [
 
 requires-python = ">= 3.10"
 
+[project.optional-dependencies]
+# 3D burn simulation: level-set SDF, STL/STEP import
+3d = [
+    "scikit-fmm",
+    "trimesh",
+    "rtree",
+    "cadquery-ocp",
+]
+dev = [
+    "pytest",
+    "matplotlib",
+]
+
 authors = [
     {name = "Drew Nickel"},
     {name = "Thomas A. Scott"},
