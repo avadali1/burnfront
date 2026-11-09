@@ -63,7 +63,12 @@ def polygon(vertices):
         v = v[::-1].copy()
 
     def f(X, Y, Z):
-        return sd_poly(v, np.stack([X, Y], axis=-1))
+        p = np.stack([np.ravel(X), np.ravel(Y)], axis=-1)
+        out = np.empty(p.shape[0])
+        chunk = max(1, 4_000_000 // max(1, v.shape[0]))  # bound the (points x vertices) temporaries
+        for s0 in range(0, p.shape[0], chunk):
+            out[s0:s0 + chunk] = sd_poly(v, p[s0:s0 + chunk])
+        return out.reshape(np.shape(X))
 
     def loops(z, ds):
         return [_subdivide(v, ds)]

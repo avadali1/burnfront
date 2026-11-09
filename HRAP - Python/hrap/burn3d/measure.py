@@ -56,12 +56,19 @@ def port_area_table(phi, chi, levels, hx, hy):
     zi = np.nonzero(band)[2]
     pb = [c[band] for c in pc]
     cb = [c[band] for c in cc]
+    pmax_b, pmin_b = pmax[band], pmin[band]
+    cmax_b, cmin_b = cmax[band], cmin[band]
+    case_cut = (cmax_b >= 0.0) & (cmin_b < 0.0)   # cells cut by the envelope
 
     A = np.empty((nz, levels.size))
     A_full = full.sum(axis=(0, 1)).astype(float)
     for k, d in enumerate(levels):
-        frac = quad_fraction_neg(*[np.maximum(p - d, c) for p, c in zip(pb, cb)])
-        A[:, k] = A_full + np.bincount(zi, weights=frac, minlength=nz)
+        # Per level, only cells actually cut by psi = max(phi - d, chi) need the exact fraction
+        inside = (pmax_b < d) & (cmax_b < 0.0)
+        cut = ~inside & (pmin_b < d) & ((pmax_b >= d) | case_cut)
+        frac = quad_fraction_neg(*[np.maximum(p[cut] - d, c[cut]) for p, c in zip(pb, cb)])
+        A[:, k] = (A_full + np.bincount(zi[inside], minlength=nz)
+                   + np.bincount(zi[cut], weights=frac, minlength=nz))
     return A * hx * hy
 
 
