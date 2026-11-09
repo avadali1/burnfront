@@ -53,8 +53,10 @@ def d_cd_nozzle(s, x, xmap):
         ((Pe-Pa)*(A_thrt*s['noz_ER']))/ \
         (Pc*A_thrt)
     
-    # Thrust
+    # Thrust (clamped here, not only in u_cd_nozzle, because the recorded history is taken
+    # after fderiv and before fupdate; without this, Pe << Pa at Pc ~ Pa logs large negative thrust)
     thrust = s['noz_eff']*Cf*A_thrt*Pc*s['noz_Cd']
+    thrust = jnp.where(Pc <= Pa, 0.0, jnp.maximum(thrust, 0.0))
 
     # Store state
     x = store_x(x, xmap, noz_mdot=mdot, noz_Me=Me, noz_Pe=Pe, noz_thrust=thrust)

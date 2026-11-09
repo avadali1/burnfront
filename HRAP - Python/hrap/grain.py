@@ -15,6 +15,26 @@ import cv2
 import math
 
 
+# Default regression law: ABS (hrap/resources/propellant_configs/ABS.mat, prop_Reg)
+#   rdot [m/s] = 1e-3 * a * G^n * L^m, a in mm/s, G in kg/(m^2 s), L in m
+ABS_REG = (0.198, 0.325, 0.0)
+
+# Floor on open port area to keep flux finite in degenerate states (m^2)
+_A_PORT_MIN = 1e-12
+
+def port_area(s, x, xmap):
+    """Open (gas-filled) port cross-section area.
+
+    grn_A is the *solid* fuel cross-section; the oxidizer flows through the
+    complement within the case, pi/4*OD^2 - grn_A. Oxidizer mass flux must
+    always be evaluated against this open area, never against grn_A.
+    """
+    return jnp.maximum(jnp.pi/4 * s['grn_OD']**2 - x[xmap['grn_A']], _A_PORT_MIN)
+
+def regression_rate(G, L, Reg, phi=1.0):
+    """Marxman-type power law rdot = phi * 1e-3*a * G^n * L^m (m/s); Reg = (a [mm/s], n, m)."""
+    return phi * 0.001*Reg[0] * jnp.maximum(G, 0.0)**Reg[1] * L**Reg[2]
+
 def d_grain_constOF(s, x, xmap, d2a):
     mdot_inj = x[xmap['tnk_mdot_inj']] # TODO: using vent?
     A = x[xmap['grn_A']]
@@ -22,28 +42,33 @@ def d_grain_constOF(s, x, xmap, d2a):
     L   = s['grn_L']
     rho = s['grn_rho']
     OF = s['grn_OF']
-    
+
     # Current arc length of exposed grain on the cross section
     arc = d2a(d, s, x, xmap)
-    
+
     # Current volume
     V = L * A
-    
+
+    # Oxidizer flux through the open port (diagnostic only for this rate law)
+    A_port = port_area(s, x, xmap)
+    G = mdot_inj / A_port
+
     # Grain consumption rate (positive)
     mdot = mdot_inj / OF
-    mdot = cond(A <= 0.0, lambda val: 0.0, lambda val: val, mdot)
-    
+    mdot = jnp.where(A <= 0.0, 0.0, mdot)
+
     # Rate of volume consumption (positive)
     Vdot = mdot / rho
-    
+
     # Rate of cross section area loss
     Adot = Vdot / L
-    
+
     # Cross sectional area linearization (i.e. volume of thin shell, Adot = arc * ddot)
-    ddot = Adot / arc
-    
+    ddot = jnp.where(arc > 0.0, Adot / jnp.where(arc > 0.0, arc, 1.0), 0.0)
+
     # Store result
-    x = store_x(x, xmap, grn_Adot=-Adot, grn_ddot=ddot, grn_V=V, grn_mdot=mdot, grn_Vdot=Vdot, cmbr_OF=OF)
+    x = store_x(x, xmap, grn_Adot=-Adot, grn_ddot=ddot, grn_V=V, grn_mdot=mdot, grn_Vdot=Vdot,
+                grn_A_port=A_port, grn_G=G, cmbr_OF=OF)
 
     return x
 
@@ -54,26 +79,31 @@ def d_grain_shiftOF(s, x, xmap, d2a):
     L   = s['grn_L']
     rho = s['grn_rho']
     Reg = s['grn_Reg']
-    
+    phi = s['grn_phi']
+
     # Current arc length of exposed grain on the cross section
     arc = d2a(d, s, x, xmap)
     # Current volume
     V = L * A
-    
-    G    = mdot_inj/A;
-    ddot = 0.001*Reg[0]*G**Reg[1]*L**Reg[2]
-    
+
+    # Oxidizer mass flux through the OPEN port area (not the solid area grn_A)
+    A_port = port_area(s, x, xmap)
+    G      = mdot_inj / A_port
+
+    # No regression once the web is consumed
+    ddot = jnp.where(A <= 0.0, 0.0, regression_rate(G, L, Reg, phi))
+
     Adot = ddot*arc
     Vdot = Adot*L
-    
     mdot = Vdot*rho
-    mdot = cond(A <= 0.0, lambda val: 0.0, lambda val: val, mdot)
-    
-    OF = mdot_inj / mdot
-    
+
+    # O/F is undefined without fuel flow; report 0 like the legacy MATLAB code instead of 0/0 = NaN
+    OF = jnp.where(mdot > 0.0, mdot_inj / jnp.where(mdot > 0.0, mdot, 1.0), 0.0)
+
     # Store result
-    x = store_x(x, xmap, grn_Adot=-Adot, grn_ddot=ddot, grn_V=V, grn_mdot=mdot, grn_Vdot=Vdot, cmbr_OF=OF)
-    
+    x = store_x(x, xmap, grn_Adot=-Adot, grn_ddot=ddot, grn_V=V, grn_mdot=mdot, grn_Vdot=Vdot,
+                grn_A_port=A_port, grn_G=G, cmbr_OF=OF)
+
     return x
 
 def u_grain(s, x, xmap):
@@ -220,10 +250,12 @@ def make_constOF_grain(shape, **kwargs):
             'Vdot': 0.0,
             'P': 101e3,
             'mdot': 0.0,
-            
+            'A_port': 0.0, # Open port cross-section area
+            'G': 0.0,      # Oxidizer mass flux through the open port
+
             **shape['x'],
         },
-        
+
         # Required and integrated variables
         req_s = ['OD', 'L', 'OF'],
         req_x = ['A'],
@@ -245,25 +277,28 @@ def make_shiftOF_grain(shape, **kwargs):
         s = {
             'OD': 0.1,
             'L': 0.1,
-            'Reg': jnp.zeros(3), # Regression coefficient (mm/s), regression exponent, length exponent
-            'rho': 1000.0,
+            'Reg': jnp.array(ABS_REG), # Regression coefficient (mm/s), regression exponent, length exponent
+            'phi': 1.0,                # Regression multiplier (e.g. swirl injection enhancement)
+            'rho': 1070.0,             # ABS
             **shape['s'],
         },
         x = {
             'A': 0.1,
             'd': 0.0,   # Distance regressed, i.e. increasing during burn
-            
+
             # Calculated variables
             'V': 0.0,
             'Vdot': 0.0,
             'P': 101e3,
             'mdot': 0.0,
-            
+            'A_port': 0.0, # Open port cross-section area
+            'G': 0.0,      # Oxidizer mass flux through the open port
+
             **shape['x'],
         },
-        
+
         # Required and integrated variables
-        req_s = ['OD', 'L', 'OF'],
+        req_s = ['OD', 'L', 'Reg'],
         req_x = ['A'],
         dx    = {'A': 'Adot', 'd': 'ddot'},
 

@@ -27,4 +27,8 @@ def bake_sat_coolprop(fluid, T_eval):
     def get_my_sat_props(T, Pv=Pv, rho_l=rho_l, rho_v=rho_v, Hv=Hv, Cp=Cp, Z=Z):
         return { 'Pv': Pv(T), 'rho_l': rho_l(T), 'rho_v': rho_v(T), 'Hv': Hv(T), 'Cp': Cp(T), 'Z': Z(T) }
 
+    # Expose the valid table range so consumers (e.g. the tank) can avoid extrapolating
+    get_my_sat_props.T_min = float(np.min(T_eval))
+    get_my_sat_props.T_max = float(np.max(T_eval))
+
     return get_my_sat_props

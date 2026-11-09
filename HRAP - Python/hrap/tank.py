@@ -168,8 +168,18 @@ def d_sat_tank(s, x, xmap, get_sat_props):
         T, m_ox, mdot_ox, x, xmap, ox, dP_dT, drho_v__dT, drho_l__dT
     )
     
-    # Set temperature rate to 0 if outside supported range and not headed back
-    
+    # Below the valid saturation-table range, extrapolated properties are meaningless (and go NaN).
+    # At the lower table bound the vapor pressure is ~ambient for supported oxidizers, so treat the
+    # tank as depleted: no further outflow and no further cooling.
+    T_lo = getattr(get_sat_props, 'T_min', None)
+    if T_lo is not None:
+        depleted = T <= T_lo
+        mdot_inj = jnp.where(depleted, 0.0, mdot_inj)
+        mdot_vnt = jnp.where(depleted, 0.0, mdot_vnt)
+        mdot_ox  = jnp.where(depleted, 0.0, mdot_ox)
+        Tdot     = jnp.where(depleted & (Tdot < 0.0), 0.0, Tdot)
+        Pdot     = jnp.where(depleted & (Pdot < 0.0), 0.0, Pdot)
+
     # Store state and derivatives
     x = store_x(x, xmap, tnk_P=Pt, tnk_Tdot=Tdot, tnk_Pdot=Pdot, tnk_mdot_ox=mdot_ox, tnk_mdot_inj=mdot_inj, tnk_mdot_vnt=mdot_vnt)
     

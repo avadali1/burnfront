@@ -249,6 +249,9 @@ def make_integrator(fstep, method):
         # Run solver while loop and record elapsed wall time
         t = jnp.arange(Nt+1)*dt
         _, _, x, _, xstack = jax.lax.fori_loop(0, Nt, step_t, (dt, s, x, method['xmap'], xstack)) # TODO: jit outside!
+        # Re-evaluate derived quantities at the final state; otherwise the last record holds values
+        # left over from the last intermediate RK stage (integrated states are unaffected)
+        x = fderiv(s, x, method['xmap'])
         xstack = xstack.at[-1, :].set(x)
         # for i in range(1, Nt+1):
         #     t, _, _, x, _, xstack = step_t(i, (t, dt, s, x, method['xmap'], xstack))
