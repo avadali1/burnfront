@@ -1,0 +1,8 @@
+# Large binaries / installers (kept on disk, not tracked)
+*.exe
+Installers/
+# Python env & build artifacts
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
