@@ -131,3 +131,29 @@ def test_auto_dt_converged():
     assert a.info['dt'] < 1e-3
     for k in ('impulse_Ns', 'm_fuel_used_kg', 'Pc_peak_Pa'):
         assert a.summary()[k] == pytest.approx(b.summary()[k], rel=1e-4), k
+
+
+def test_gas_orifice_limits():
+    from hrap.tank import gas_orifice
+    CdA, P1, rho1, g = 1e-6, 3e6, 80.0, 1.3
+    # small pressure drop -> incompressible orifice
+    dP = 1e-4*P1
+    assert float(gas_orifice(CdA, P1, rho1, P1 - dP, g)) == pytest.approx(CdA*np.sqrt(2*rho1*dP), rel=1e-4)
+    # choked plateau and continuity at the critical ratio
+    rc = (2/(g + 1))**(g/(g - 1))
+    ch = CdA*np.sqrt(g*P1*rho1)*(2/(g + 1))**((g + 1)/(2*(g - 1)))
+    assert float(gas_orifice(CdA, P1, rho1, 0.1*P1, g)) == pytest.approx(ch, rel=1e-12)
+    assert float(gas_orifice(CdA, P1, rho1, rc*P1*(1 + 1e-9), g)) == pytest.approx(ch, rel=1e-6)
+    # subsonic flow at modest pressure drop is below the (legacy, always-choked) value
+    assert float(gas_orifice(CdA, P1, rho1, 0.9*P1, g)) < 0.75*ch
+
+
+def test_tank_wall_heat_capacity():
+    """A lumped wall in equilibrium with the fluid slows cooling; U_fluid + C_wall T is the conserved energy."""
+    C = 2.0*900.0
+    a = run_motor(BASE.replace(T=3.0, dt=2.5e-4))
+    b = run_motor(BASE.replace(T=3.0, dt=2.5e-4, tank_wall_mass=2.0))
+    assert (b['tnk_T'][0] - b['tnk_T'][-1]) < 0.8*(a['tnk_T'][0] - a['tnk_T'][-1])
+    E = b['tnk_U'] + C*b['tnk_T']
+    out = np.trapezoid(b['tnk_mdot_inj']*b['tnk_h_out'], b.t)
+    assert (E[-1] - E[0] + out)/out == pytest.approx(0.0, abs=1e-4)

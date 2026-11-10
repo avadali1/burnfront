@@ -14,7 +14,7 @@ def bake_sat_coolprop(fluid, T_eval):
     energies u_l, u_v and enthalpies h_l, h_v used by the equilibrium tank model.
     """
     T_eval = np.asarray(T_eval, dtype=float)
-    keys = ['Pv', 'rho_l', 'rho_v', 'Hv', 'Cp', 'Z', 'u_l', 'u_v', 'h_l', 'h_v']
+    keys = ['Pv', 'rho_l', 'rho_v', 'Hv', 'Cp', 'Z', 'u_l', 'u_v', 'h_l', 'h_v', 'k_v']
     tab = {k: np.zeros_like(T_eval) for k in keys}
     for i, T in enumerate(T_eval):
         tab['Pv'][i]    = CP.PropsSI('P', 'T', T, 'Q', 0, fluid)
@@ -26,6 +26,7 @@ def bake_sat_coolprop(fluid, T_eval):
         tab['h_v'][i]   = CP.PropsSI('H', 'T', T, 'Q', 1, fluid)
         tab['u_l'][i]   = CP.PropsSI('U', 'T', T, 'Q', 0, fluid)
         tab['u_v'][i]   = CP.PropsSI('U', 'T', T, 'Q', 1, fluid)
+        tab['k_v'][i]   = tab['Cp'][i]/CP.PropsSI('CVMASS', 'T', T, 'Q', 1, fluid)
     tab['Hv'] = tab['h_v'] - tab['h_l']
 
     # Monotone cubic splines (no extrapolation: callers keep T inside [T_min, T_max])
@@ -38,6 +39,7 @@ def bake_sat_coolprop(fluid, T_eval):
     get_my_sat_props.T_min = float(np.min(T_eval))
     get_my_sat_props.T_max = float(np.max(T_eval))
     get_my_sat_props.fluid = fluid
+    get_my_sat_props.R = 8.314462618/CP.PropsSI('M', fluid)
 
     return get_my_sat_props
 

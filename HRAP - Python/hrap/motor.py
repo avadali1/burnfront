@@ -66,13 +66,15 @@ class MotorConfig:
     vent_CdA: float = 0.0
     vent_to_chamber: bool = False
     tank_model: str = 'equilibrium'   # 'equilibrium' (energy-conserving, default) or 'legacy'
+    tank_wall_mass: float = 0.0       # kg of tank wall in thermal contact with the fluid (equilibrium model)
+    tank_wall_cp: float = 900.0       # J/kg/K (aluminium ~900, steel ~490)
 
     # Injector
     inj_N: int = 1
     inj_d: float = 0.5*_IN       # hole diameter
     inj_Cd: float = 0.22
     inj_liq_model: str = 'Dyer'             # 'Dyer', 'HEM', 'Incompressible' (legacy tank: Incompressible only)
-    inj_vap_model: str = 'Incompressible'   # or 'Real Gas'
+    inj_vap_model: str = 'Real Gas'         # compressible orifice (equilibrium tank) or 'Incompressible'
 
     # Grain
     mode: str = '3d'             # '3d' (level set) or '2d' (cross-section outline)
@@ -285,10 +287,12 @@ def _parts(cfg):
     T0, m0, info = initial_tank_state(cfg)
     if cfg.tank_model == 'equilibrium':
         hem = hem_table(cfg.fluid) if cfg.inj_liq_model in ('HEM', 'Dyer') else None
-        make_tank = lambda *a, **k: make_eq_tank(*a, get_hem=hem, **k)
+        make_tank = lambda *a, **k: make_eq_tank(*a, get_hem=hem, wall_C=cfg.tank_wall_mass*cfg.tank_wall_cp, **k)
     elif cfg.tank_model == 'legacy':
         if cfg.inj_liq_model != 'Incompressible':
             raise ValueError("the legacy tank supports inj_liq_model='Incompressible' only")
+        if cfg.tank_wall_mass:
+            raise ValueError('tank wall heat capacity needs the equilibrium tank')
         make_tank = make_sat_tank
     else:
         raise ValueError("tank_model must be 'equilibrium' or 'legacy'")

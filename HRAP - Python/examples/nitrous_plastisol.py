@@ -78,7 +78,7 @@ noz = make_cd_nozzle(
     thrt = 0.8 * _in, # Throat diameter
     ER = 5.0,         # Exit/throat area ratio
     eff = 0.97,
-    C_d = 0.995,
+    Cd = 0.995,
 )
 
 from jax.scipy.interpolate import RegularGridInterpolator

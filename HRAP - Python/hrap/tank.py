@@ -122,6 +122,9 @@ def d_sat_tank(s, x, xmap, get_sat_props):
     
     dP = Pt - Pc
     
+    # NOTE (legacy, kept for reproducibility): these "Mach numbers" evaluate to the speed of sound
+    # (~200 m/s) and are clamped to 1, so vapor flow is always treated as choked. The equilibrium
+    # tank (make_eq_tank) uses the correct compressible orifice flow, gas_orifice().
     Mcc  = jnp.sqrt(ox['Z']*1.31*188.91*T*(Pc/Pt)**(0.31/1.31))
     Matm = jnp.sqrt(ox['Z']*1.31*188.91*T*(Pa/Pt)**(0.31/1.31))
     
@@ -289,6 +292,15 @@ def make_sat_tank(get_sat_props, **kwargs):
 #                           self-pressurized tank (P1 = Pv)
 # Mixture/vapor feed: 'Incompressible' with the tank mixture density m/V, or 'Real Gas' (legacy).
 
+def gas_orifice(CdA, P1, rho1, P2, g):
+    """Isentropic compressible orifice flow from (P1, rho1) to back pressure P2 (exponent g):
+    choked  CdA sqrt(g P1 rho1) (2/(g+1))^((g+1)/(2(g-1)))  for P2/P1 <= (2/(g+1))^(g/(g-1)),
+    else    CdA sqrt(2 g/(g-1) P1 rho1 (r^(2/g) - r^((g+1)/g))),  r = P2/P1."""
+    rc = (2.0/(g + 1.0))**(g/(g - 1.0))
+    r = jnp.clip(P2/P1, rc, 1.0)
+    return CdA*jnp.sqrt(jnp.maximum(2.0*g/(g - 1.0)*P1*rho1*(r**(2.0/g) - r**((g + 1.0)/g)), 0.0))
+
+
 def _eq_liquid_mass(T, m, V, get_sat_props):
     p = get_sat_props(T)
     return (V - m/p['rho_v'])/(1.0/p['rho_l'] - 1.0/p['rho_v'])
@@ -334,22 +346,22 @@ def d_eq_tank(s, x, xmap, get_sat_props, get_hem):
     # Mixture/vapor feed
     rho_mix = m/V
     if s['tnk_inj_vap_model'] == 'Real Gas':
-        Mcc = jnp.minimum(jnp.sqrt(p['Z']*1.31*188.91*T*(Pc/Pt)**(0.31/1.31)), 1.0)
-        m_vap_feed = (NCdA*Pt/jnp.sqrt(T))*jnp.sqrt(1.31/(p['Z']*188.91))*Mcc*(1 + 0.31/2*Mcc**2)**(-2.31/0.62)
+        # compressible (choked or subsonic) flow of the tank vapor/mist, upstream density m/V
+        m_vap_feed = gas_orifice(NCdA, Pt, rho_mix, jnp.minimum(Pc, Pt), p['k_v'])
     else:
         m_vap_feed = NCdA*jnp.sqrt(2.0*rho_mix*dP)
     mdot_inj = jnp.where(bulk, m_liq_feed, m_vap_feed)
     mdot_inj = jnp.where(m > 0.0, mdot_inj, 0.0)
 
-    # Vent (vapor), legacy flow formula
-    Matm = jnp.minimum(jnp.sqrt(p['Z']*1.31*188.91*T*(Pa/Pt)**(0.31/1.31)), 1.0)
-    mdot_vnt = jnp.where(s['tnk_vnt_S'] == 0, 0.0,
-                         (s['tnk_vnt_CdA']*Pt/jnp.sqrt(T))*jnp.sqrt(1.31/(p['Z']*188.91))*Matm*(1 + 0.31/2*Matm**2)**(-2.31/0.62))
+    # Vent: saturated vapor through an orifice to ambient (or the chamber when plumbed to it)
+    P_vent = jnp.where(s['tnk_vnt_S'] == 2, Pc, Pa)
+    mdot_vnt = jnp.where(s['tnk_vnt_S'] == 0, 0.0, gas_orifice(s['tnk_vnt_CdA'], Pt, rho_v, jnp.minimum(P_vent, Pt), p['k_v']))
 
     h_out = jnp.where(bulk, p['h_l'], (U + Pt*V)/jnp.maximum(m, 1e-12))
     dU = -mdot_inj*h_out - mdot_vnt*p['h_v']
     mdot_ox = -(mdot_inj + mdot_vnt)
-    Tdot = (dU - dU_dm*mdot_ox)/dU_dT
+    # Tank wall in thermal equilibrium with the fluid (lumped heat capacity wall_C = m_wall c_wall)
+    Tdot = (dU - dU_dm*mdot_ox)/(dU_dT + s['tnk_wall_C'])
     Pdot = dP_dT*Tdot
 
     T_lo = getattr(get_sat_props, 'T_min', None)
@@ -388,6 +400,7 @@ def make_eq_tank(get_sat_props, get_hem=None, **kwargs):
             'inj_N': 1,
             'inj_vap_model': StaticVar('Incompressible'),
             'inj_liq_model': StaticVar('Dyer'),
+            'wall_C': 0.0,      # tank wall heat capacity m_wall*c_wall [J/K] (0 = adiabatic, no wall)
         },
         x = {
             'T': 293.0, 'm_ox': 1.0,
