@@ -256,6 +256,7 @@ def build_grain(cfg, verbose=False):
                 from hrap.burn3d import cad
                 g, rep = cad.load_grain(port['path'], units=port.get('units'), axis=port.get('axis', 'z'),
                                         n_xy=cfg.n_xy, n_z=cfg.n_z, verbose=verbose)
+                g.report = rep   # mesh validation report (shown by the GUI)
                 return g
             return shapes.cylindrical_grain(port_shape_3d(port, cfg.grain_OD, cfg.grain_L),
                                             cfg.grain_OD, cfg.grain_L, n_xy=cfg.n_xy, n_z=cfg.n_z)

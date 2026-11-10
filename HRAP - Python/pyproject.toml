@@ -24,9 +24,17 @@ dependencies = [
 	"coolprop",
 	"interpax",
 	"opencv-python",
+	"matplotlib",
 ]
 
 requires-python = ">= 3.10"
+
+authors = [
+    {name = "Drew Nickel"},
+    {name = "Thomas A. Scott"},
+]
+
+description = "HRAP is a versatile tool for simulation of hybrid rocket engines."
 
 [project.optional-dependencies]
 # 3D burn simulation: level-set SDF, STL/STEP import
@@ -41,15 +49,9 @@ dev = [
     "matplotlib",
 ]
 
-authors = [
-    {name = "Drew Nickel"},
-    {name = "Thomas A. Scott"},
-]
-
-description = "HRAP is a versatile tool for simulation of hybrid rocket engines."
-
 [project.urls]
 Homepage = "https://github.com/rnickel1/HRAP_Source"
 
 [project.scripts]
-hrap = "hrap.gui.main:main"
+hrap = "hrap.gui.app:main"
+hrap-legacy = "hrap.gui.main:main"
