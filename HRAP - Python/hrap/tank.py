@@ -39,8 +39,23 @@ def liq_blowdow(mdot_ox, x, xmap, ox, dP_dT, drho_v__dT, drho_l__dT):
     
     return Tdot, Pdot
 
-# Assume vapor remains along saturation line, which has been experimentally validated for nitrous oxide
+# Assume vapor remains along saturation line, which has been experimentally validated for nitrous oxide.
+# Model (as in legacy HRAP): T(m) solves T = T1 (Z(T)/Z1 * m/m1)^0.3. Its exact time derivative by
+# implicit differentiation at m = m1:
+#     dT/dm = 0.3 (T/m) / (1 - 0.3 T Z'(T)/Z),   Tdot = dT/dm * mdot_ox
+# This is the delta -> 0 limit of the legacy finite-difference/fixed-point version (kept below as
+# sat_vap_blowdown_fd), whose fixed-point tolerance (1e-9 in Z) divided by delta = 1e-7 injected
+# ~1 K/s of step-to-step noise into Tdot.
 def sat_vap_blowdown(T, m_ox, mdot_ox, ox, dP_dT, get_sat_props):
+    Z = ox['Z']
+    dZ_dT = jax.grad(lambda T: get_sat_props(T)['Z'])(T)
+    dT_dm = 0.3*(T/m_ox) / (1.0 - 0.3*T*dZ_dT/Z)
+    Tdot = dT_dm*mdot_ox
+    Pdot = Tdot * dP_dT
+
+    return Tdot, Pdot
+
+def sat_vap_blowdown_fd(T, m_ox, mdot_ox, ox, dP_dT, get_sat_props):
     delta = 1E-7 # FD step
     m_2__m_1 = (m_ox + mdot_ox*delta) / m_ox
     
@@ -90,6 +105,11 @@ def d_sat_tank(s, x, xmap, get_sat_props):
     
     # Get mass of oxidizer currently in the phases
     m_liq = jnp.maximum((tnk_V - (m_ox/rho_v))/ ((1/rho_l)-(1/rho_v)), 0.0)
+    # Once the liquid is depleted the tank stays in the vapor-only phase (latched in u_sat_tank).
+    # The vapor model cools slightly faster than the saturation line, so without the latch the
+    # inferred liquid mass flickers between 0 and ~1e-4 kg and the blowdown model alternates every
+    # time step (Tdot jumping between the vapor and liquid branches).
+    m_liq = jnp.where(x[xmap['tnk_vap_only']] > 0.5, 0.0, m_liq)
     m_vap = m_ox - m_liq
     x = store_x(x, xmap, tnk_m_ox_liq=m_liq, tnk_m_ox_vap=m_vap) # Store here because needed in blowdown funcs
     x = store_x(x, xmap, tnk_rho_ox_liq=rho_l, tnk_rho_ox_vap=rho_v)
@@ -199,6 +219,7 @@ def u_sat_tank(s, x, xmap):
         # Record needed for avg pressure drop blowdown model
         tnk_Pdot_sum = x[xmap['tnk_Pdot_sum']] + x[xmap['tnk_Pdot']],
         tnk_Pdot_N = x[xmap['tnk_Pdot_N']] + 1,
+        tnk_vap_only = jnp.where(x[xmap['tnk_m_ox_liq']] <= 0.0, 1.0, x[xmap['tnk_vap_only']]),
     )
 
     return x
@@ -230,6 +251,7 @@ def make_sat_tank(get_sat_props, **kwargs):
             'rho_ox_vap': 0.0,
             'Pdot_sum': 0.0,
             'Pdot_N': 0,
+            'vap_only': 0.0,
         },
         
         # Required and integrated variables
