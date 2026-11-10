@@ -141,17 +141,8 @@ def _prop_path(name):
 def chemistry(propellant):
     """(k, M, T) interpolators over (O/F, Pc) from an HRAP propellant file."""
     def make():
-        import scipy.io
-        from jax.scipy.interpolate import RegularGridInterpolator
-        c = scipy.io.loadmat(_prop_path(propellant))['s'][0][0]
-        grid = (np.asarray(c['prop_OF'], float).ravel(), np.asarray(c['prop_Pc'], float).ravel())
-        out = []
-        for key, fill in [('prop_k', 1.4), ('prop_M', 29.0), ('prop_T', 293.0)]:
-            v = np.asarray(c[key], float)
-            if v.size == 1:
-                v = np.full((grid[0].size, grid[1].size), v.item())
-            out.append(RegularGridInterpolator(grid, v, fill_value=fill))
-        return tuple(out)
+        from hrap.chemtab import mat_interpolators
+        return mat_interpolators(_prop_path(propellant))
     return _cached(('chem', str(propellant)), make)
 
 

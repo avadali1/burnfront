@@ -143,8 +143,8 @@ def test_full_engine_2d_mode_mass_and_cstar_balance():
 
     c = scipy.io.loadmat(HRAP_ROOT/'resources'/'propellant_configs'/'ABS.mat')['s'][0][0]
     grid = (c['prop_OF'].ravel(), c['prop_Pc'].ravel())
-    ik, iM, iT = [RegularGridInterpolator(grid, c[k], fill_value=f)
-                  for k, f in [('prop_k', 1.4), ('prop_M', 29.0), ('prop_T', 293.0)]]
+    from hrap.chemtab import mat_interpolators
+    ik, iM, iT = mat_interpolators(HRAP_ROOT/'resources'/'propellant_configs'/'ABS.mat')
     law = RegressionLaw.from_mat(HRAP_ROOT/'resources'/'propellant_configs'/'ABS.mat')
     get_sat = fluid.bake_sat_coolprop('NitrousOxide', np.linspace(183.0, 309.0, 20))
     V_tnk, T0 = (np.pi/4*4.75**2*_in**2)*(7.0*_ft), 294.0

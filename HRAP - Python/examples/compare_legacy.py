@@ -122,8 +122,9 @@ chem = scipy.io.loadmat(hrap_root/'resources'/'propellant_configs'/'ABS.mat')
 chem = chem['s'][0][0]
 chem_OF = chem['prop_OF'].ravel()
 chem_Pc = chem['prop_Pc'].ravel()
-chem_k, chem_M, chem_T = chem['prop_k'], chem['prop_M'], chem['prop_T']
-if chem_k.size == 1: chem_k = np.full_like(chem_T, chem_k.item())
+# .mat tables are stored [Pc, OF]; orient them to the (OF, Pc) interpolation grid
+from hrap.chemtab import orient
+chem_k, chem_M, chem_T = [orient(chem[k], chem_OF.size, chem_Pc.size) for k in ('prop_k', 'prop_M', 'prop_T')]
 
 
 

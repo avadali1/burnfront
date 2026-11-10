@@ -176,9 +176,10 @@ noz = make_cd_nozzle(
 )
 
 from jax.scipy.interpolate import RegularGridInterpolator
-chem_interp_k = RegularGridInterpolator((chem_OF, chem_Pc), chem_k, fill_value=1.4)
-chem_interp_M = RegularGridInterpolator((chem_OF, chem_Pc), chem_M, fill_value=29.0)
-chem_interp_T = RegularGridInterpolator((chem_OF, chem_Pc), chem_T, fill_value=293.0)
+# Tables were filled as [Pc, OF]; the interpolator grid is (OF, Pc)
+chem_interp_k = RegularGridInterpolator((chem_OF, chem_Pc), chem_k.T, fill_value=1.4)
+chem_interp_M = RegularGridInterpolator((chem_OF, chem_Pc), chem_M.T, fill_value=29.0)
+chem_interp_T = RegularGridInterpolator((chem_OF, chem_Pc), chem_T.T, fill_value=293.0)
 
 s, x, method = core.make_engine(
     tnk, grn, cmbr, noz,
