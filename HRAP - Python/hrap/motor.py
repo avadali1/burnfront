@@ -96,6 +96,7 @@ class MotorConfig:
     noz_Cd: float = 0.995
     noz_eff: float = 0.97
     noz_sep_ratio: float = 0.4   # Summerfield separation criterion p_sep/Pa (0 disables)
+    noz_expansion: str = 'equilibrium'   # 'equilibrium' (shifting, Cantera/CEA-validated) or 'frozen'
     Pa: float = 101325.0
 
     # Integration
@@ -144,6 +145,16 @@ def chemistry(propellant):
         from hrap.chemtab import mat_interpolators
         return mat_interpolators(_prop_path(propellant))
     return _cached(('chem', str(propellant)), make)
+
+
+def expansion_table(propellant):
+    """Shifting-equilibrium expansion table on the propellant's (O/F, Pc) grid (cached on disk)."""
+    def make():
+        from hrap import expansion
+        from hrap.chemtab import load_mat_tables
+        OF, Pc, *_ = load_mat_tables(_prop_path(propellant))
+        return expansion.table_for(propellant, OF, Pc, verbose=True)
+    return _cached(('expansion', str(propellant)), make)
 
 
 def regression_law(cfg):
@@ -295,7 +306,20 @@ def _parts(cfg):
         vnt_S=(2 if cfg.vent_to_chamber else 1) if cfg.vent_CdA > 0 else 0, vnt_CdA=cfg.vent_CdA,
     )
     cmbr = make_chamber(cstar_eff=cfg.cstar_eff)
-    noz = make_cd_nozzle(thrt=cfg.throat_d, ER=cfg.ER, eff=cfg.noz_eff, Cd=cfg.noz_Cd, sep_ratio=cfg.noz_sep_ratio)
+    noz_kw = {}
+    if cfg.noz_expansion == 'equilibrium':
+        from hrap import expansion
+        from hrap.nozzle import expansion_kwargs
+        if expansion.supported(cfg.propellant):
+            noz_kw = expansion_kwargs(expansion_table(cfg.propellant))
+        else:
+            info['notes'] = (f'No reactant definition for {cfg.propellant!r}: frozen expansion used '
+                             f'(equilibrium supports {sorted(expansion.FUELS)})')
+    elif cfg.noz_expansion != 'frozen':
+        raise ValueError("noz_expansion must be 'equilibrium' or 'frozen'")
+    info['expansion'] = 'equilibrium' if noz_kw else 'frozen'
+    noz = make_cd_nozzle(thrt=cfg.throat_d, ER=cfg.ER, eff=cfg.noz_eff, Cd=cfg.noz_Cd, sep_ratio=cfg.noz_sep_ratio,
+                         **noz_kw)
     ik, iM, iT = chemistry(cfg.propellant)
     return tnk, cmbr, noz, dict(chem_interp_k=ik, chem_interp_M=iM, chem_interp_T=iT, Pa=cfg.Pa), info
 

@@ -19,7 +19,7 @@ The nozzle mass flow is evaluated here (hrap.nozzle.mass_flow) from the current 
 chamber never uses a stale nozzle flow.
 """
 from hrap.core import store_x, make_part
-from hrap.nozzle import mass_flow, gamma_fn
+from hrap.nozzle import mass_flow, gamma_fn, eq_lookup
 
 import jax
 import jax.numpy as jnp
@@ -71,7 +71,14 @@ def d_chamber(s, x, xmap):
     R_mix = Rm/m
     gam = (C + Rm)/C
 
-    mdot_out = mass_flow(P, s['Pa'], T, R_mix, gam, s['noz_Cd'], s['noz_thrt'], s['noz_ER'])
+    # Equilibrium expansion: choked flow with the equilibrium c* (c*_eq/c*_gamma from the expansion
+    # tables), weighted by the combustion-product mass fraction
+    y_burn = jnp.where(burning, mp/m, 0.0)
+    if s['noz_expansion'] == 'equilibrium':
+        fc = 1.0 + y_burn*(eq_lookup(s, OF, P)[3] - 1.0)
+    else:
+        fc = jnp.ones_like(P)
+    mdot_out = mass_flow(P, s['Pa'], T, R_mix, gam, s['noz_Cd'], s['noz_thrt'], s['noz_ER'], cstar_factor=fc)
     ya, yp = ma/m, mp/m
     mdot_a = -mdot_out*ya
     mdot_p = mdot_in - mdot_out*yp
@@ -81,10 +88,10 @@ def d_chamber(s, x, xmap):
     Pdot = ((E - Cdot*T + C*T*Rmdot/Rm)*Rm/C - P*Vdot)/V
     Pdot = jnp.where((P <= s['Pa']) & (Pdot < 0.0), 0.0, Pdot)
 
-    cstar = jnp.sqrt(R_mix*T)/gamma_fn(gam)
+    cstar = jnp.sqrt(R_mix*T)/gamma_fn(gam)*fc
     x = store_x(x, xmap, cmbr_mdot_g=mdot_in - mdot_out, cmbr_mdot_air=mdot_a, cmbr_Pdot=Pdot,
                 cmbr_k=gam, cmbr_R=R_mix, cmbr_T=T, cmbr_T_in=T_in, cmbr_cstar=cstar,
-                cmbr_chem_clamp=flag, noz_mdot=mdot_out)
+                cmbr_chem_clamp=flag, cmbr_cstar_fac=fc, cmbr_y_burn=y_burn, noz_mdot=mdot_out)
     return x
 
 
@@ -128,6 +135,8 @@ def make_chamber(**kwargs):
             'T_in': 0.0,
             'cstar': 0.0,
             'chem_clamp': 0.0,
+            'cstar_fac': 1.0,
+            'y_burn': 0.0,
             'OF': 0.0, # Handled by grain file
         },
         req_s = [],

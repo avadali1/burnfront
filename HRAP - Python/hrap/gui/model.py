@@ -93,6 +93,10 @@ FIELDS = [
     Field('noz_Cd', 'Nozzle Cd', 'Chamber & Nozzle', default=0.98),
     Field('noz_eff', 'Thrust efficiency', 'Chamber & Nozzle', default=0.97),
     Field('noz_sep_ratio', 'Separation p/Pa', 'Chamber & Nozzle', default=0.4),
+    Field('noz_expansion', 'Nozzle expansion', 'Chamber & Nozzle', 'combo',
+          items=['shifting equilibrium', 'frozen'], default='shifting equilibrium',
+          tip='Shifting: products re-equilibrate as they expand (Cantera, validated against NASA CEA).\n'
+              'The first run per fuel builds a cached table (a few minutes).'),
     Field('Pa', 'Ambient pressure', 'Chamber & Nozzle', unit='kPa', scale=1e3, default=101.325),
     # --- numerics
     Field('T', 'Simulated time', 'Numerics', unit='s', default=10.0),
@@ -193,6 +197,7 @@ def values_to_config(v):
         n_xy_2d=si['n_xy_2d'], n_z_2d=si['n_z_2d'], helical_2d=bool(v['helical_2d']),
         V_free=si['V_free'], cstar_eff=si['cstar_eff'], throat_d=si['throat_d'], ER=si['ER'],
         noz_Cd=si['noz_Cd'], noz_eff=si['noz_eff'], noz_sep_ratio=si['noz_sep_ratio'], Pa=si['Pa'],
+        noz_expansion='frozen' if v.get('noz_expansion') == 'frozen' else 'equilibrium',
         T=si['T'], dt=None if v['auto_dt'] else si['dt'], stepper=v['stepper'],
     )
     for name, val in [('tank volume', cfg.tank_V), ('injector diameter', cfg.inj_d), ('throat', cfg.throat_d),

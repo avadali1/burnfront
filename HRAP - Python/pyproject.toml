@@ -25,6 +25,7 @@ dependencies = [
 	"interpax",
 	"opencv-python",
 	"matplotlib",
+	"cantera",
 ]
 
 requires-python = ">= 3.10"
@@ -46,6 +47,7 @@ description = "HRAP is a versatile tool for simulation of hybrid rocket engines.
 ]
 dev = [
     "pytest",
+    "rocketcea",
     "matplotlib",
 ]
 

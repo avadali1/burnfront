@@ -244,7 +244,8 @@ class App:
                 dpg.add_text('-' if val is None or (isinstance(val, float) and np.isnan(val)) else f'{val*sc:.5g}')
                 dpg.add_text(unit)
         info = r.info
-        lines = [f"Initial tank: T = {info['T0']:.2f} K, P = {info['P0']/1e5:.2f} bar, oxidizer {info['m_ox0']:.4g} kg",
+        lines = [f"Nozzle expansion: {info.get('expansion', 'frozen')}" + (f"  ({info['notes']})" if info.get('notes') else ''),
+                 f"Initial tank: T = {info['T0']:.2f} K, P = {info['P0']/1e5:.2f} bar, oxidizer {info['m_ox0']:.4g} kg",
                  f"Initial fuel: {r.m_fuel0:.4g} kg;  time step {info['dt']*1e3:.3g} ms;  wall time {info['wall_time']:.1f} s"]
         if r.mode == '3d':
             lines.append(f"3D grain: grid {r.grain.grid.shape}, {info['n_segments']} grain steps, "
