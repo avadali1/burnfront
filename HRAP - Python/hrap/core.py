@@ -77,7 +77,7 @@ def make_part(s, x, req_s, req_x, dx, typename=None, fpreprs=None, fderiv=None, 
 def make_engine(tank, grn, cmbr, noz, **kwargs):
     xdict = { }
     s     = { }
-    method = { 'fpreprs': [], 'fderivs': [], 'fupdates': [], 'diff_xmap': [], 'diff_dmap': [] }
+    method = { 'fpreprs': [], 'fderivs': [], 'fupdates': [], 'fpostinits': [], 'diff_xmap': [], 'diff_dmap': [] }
     
     # Add static variables not related to an individual item
     for key, val in kwargs.items():
@@ -93,6 +93,8 @@ def make_engine(tank, grn, cmbr, noz, **kwargs):
             method['fderivs'].append(part['fderiv'])
         if part['fupdate'] != None:
             method['fupdates'].append(part['fupdate'])
+        if part.get('fpostinit') is not None:
+            method['fpostinits'].append(part['fpostinit'])
         
         for key, val in part['x'].items():
             xdict[key] = val
@@ -137,6 +139,19 @@ def unpack_engine(s, xstack, method):
                 comps[i][sname[len(prefix)+1:]] = s[sname]  
     
     return comps
+
+def initialize(s, x, method):
+    """Preprocess (fpreprs), evaluate all derivatives once so derived quantities such as the grain
+    volume are available, then run the post-initialization hooks (e.g. chamber gas fill)."""
+    xmap = method['xmap']
+    for f in method['fpreprs']:
+        x = f(s, x, xmap)
+    if method.get('fpostinits'):
+        for f in method['fderivs']:
+            x = f(s, x, xmap)
+        for f in method['fpostinits']:
+            x = f(s, x, xmap)
+    return x
 
 def store_x(x, xmap, **kwargs):
     for key, val in kwargs.items():
@@ -241,8 +256,7 @@ def make_integrator(fstep, method):
         # print('AGFFSAGAGS', x[method['xmap']['tnk_m_ox']])
 
         if do_init:
-            for fpreprs in method['fpreprs']:
-                x = fpreprs(s, x, method['xmap'])
+            x = initialize(s, x, method)
         
         # xstack = xstack.at[0, :].set(x)
 

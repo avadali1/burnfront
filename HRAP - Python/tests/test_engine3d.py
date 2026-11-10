@@ -52,11 +52,12 @@ def test_3d_engine_matches_standalone_burn_with_engine_oxidizer_flow(twisted_run
     cfg, res = twisted_run
     t, mox = res.t, res['tnk_mdot_inj']
     ref = burn_prescribed(build_grain(cfg), regression_law(cfg), lambda tt: float(np.interp(tt, t, mox)), t[-1])
-    ts = np.linspace(0.2, 0.95*t[-1], 40)
-    mf = np.interp(ts, t, res['grn_mdot'])
-    assert np.max(np.abs(mf/np.interp(ts, ref.t, ref.mdot_f) - 1)) < 3e-3
-    Ab = np.interp(ts, t, res['grn_Ab'])
-    assert np.max(np.abs(Ab/np.interp(ts, ref.t, ref.A_burn) - 1)) < 3e-3
+    # Compare at the reference's own (coarse, RK4-substep) record times; the engine record is 1 ms
+    sel = (ref.t > 0.05) & (ref.t < 0.98*t[-1])
+    mf = np.interp(ref.t[sel], t, res['grn_mdot'])
+    assert np.max(np.abs(mf/ref.mdot_f[sel] - 1)) < 3e-3
+    Ab = np.interp(ref.t[sel], t, res['grn_Ab'])
+    assert np.max(np.abs(Ab/ref.A_burn[sel] - 1)) < 3e-3
 
 
 def test_3d_engine_mass_and_cstar_balance(twisted_run):
@@ -72,14 +73,17 @@ def test_3d_engine_mass_and_cstar_balance(twisted_run):
     # Fuel generated vs geometric volume loss: FE residual of V(d) plus the level-set defect per segment
     assert fuel == pytest.approx(r.m_fuel_burned[-1], rel=2e-4)
     assert np.sum(np.abs(r.geo_defect)) < 1e-4
-    assert ox_out + fuel == pytest.approx(noz + dmg, rel=1e-3)
+    # The chamber evaluates the nozzle flow from its own current state: exact ledger
+    assert ox_out + fuel == pytest.approx(noz + dmg, rel=1e-12)
     # c* balance
     At = np.pi/4*cfg.throat_d**2
-    on = g('cmbr_P') > 1.5e5
+    on = g('cmbr_P') > 2.0e5   # choked (critical pressure ratio ~1.8)
     assert np.allclose(g('noz_mdot')[on]*g('cmbr_cstar')[on], g('cmbr_P')[on]*cfg.noz_Cd*At, rtol=1e-9)
     main = g('tnk_mdot_inj') > 0.5*g('tnk_mdot_inj').max()
     cstar_in = g('cmbr_P')[main]*cfg.noz_Cd*At/(g('tnk_mdot_inj')[main] + g('grn_mdot')[main])
-    assert np.median(np.abs(cstar_in/g('cmbr_cstar')[main] - 1)) < 0.03
+    assert np.median(np.abs(cstar_in/g('cmbr_cstar')[main] - 1)) < 2e-3
+    # Quasi-steady burn: chamber gas temperature equals the (c*-efficiency corrected) flame temperature
+    assert np.median(np.abs(g('cmbr_T')[main]/g('cmbr_T_in')[main] - 1)) < 1e-3
     # Snapshots: the front at t has moved by the recorded per-station depth
     assert [round(s[0], 3) for s in r.snapshots] == [1.0, 2.5]
 

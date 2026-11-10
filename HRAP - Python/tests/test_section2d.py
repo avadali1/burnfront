@@ -172,14 +172,17 @@ def test_full_engine_2d_mode_mass_and_cstar_balance():
     # Fuel volume is a function of the integrated depths, V(d): forward Euler leaves an O(dt) residual
     assert fuel == pytest.approx(law.rho*(g('grn_V')[0] - g('grn_V')[-1]), rel=1e-4)
     # Chamber: injected oxidizer + fuel = nozzle outflow + stored gas
-    assert ox_out + fuel == pytest.approx(noz + dmg, rel=1e-3)
+    # The chamber evaluates the nozzle flow from its own current state: exact ledger
+    assert ox_out + fuel == pytest.approx(noz + dmg, rel=1e-12)
 
     # c* balance: nozzle flow obeys mdot = Pc Cd At / c*, and in the quasi-steady main burn the
     # incoming propellant flow matches it (chamber filling is a small correction)
     At = np.pi/4*thrt**2
-    on = g('cmbr_P') > 1.5e5
+    on = g('cmbr_P') > 2.0e5   # choked (critical pressure ratio ~1.8)
     assert np.allclose(g('noz_mdot')[on]*g('cmbr_cstar')[on], g('cmbr_P')[on]*Cd*At, rtol=1e-9)
     main = g('tnk_mdot_inj') > 0.5*g('tnk_mdot_inj').max()
     cstar_in = g('cmbr_P')[main]*Cd*At/(g('tnk_mdot_inj')[main] + g('grn_mdot')[main])
-    assert np.median(np.abs(cstar_in/g('cmbr_cstar')[main] - 1)) < 0.03
+    assert np.median(np.abs(cstar_in/g('cmbr_cstar')[main] - 1)) < 2e-3
+    # Quasi-steady burn: chamber gas temperature equals the (c*-efficiency corrected) flame temperature
+    assert np.median(np.abs(g('cmbr_T')[main]/g('cmbr_T_in')[main] - 1)) < 1e-3
     assert 1200 < np.median(g('cmbr_cstar')[main]) < 1800

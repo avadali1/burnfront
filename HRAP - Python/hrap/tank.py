@@ -270,3 +270,137 @@ def make_sat_tank(get_sat_props, **kwargs):
         # The user-specified s or x entries
         **kwargs,
     )
+
+
+# --------------------------------------------------------------------------------------------------
+# Equilibrium (thermodynamically consistent) saturated tank
+# --------------------------------------------------------------------------------------------------
+# The tank holds saturated two-phase fluid in equilibrium at T. With total mass m and volume V:
+#     m_l = (V - m v_v(T)) / (v_l(T) - v_v(T)),   U(T, m) = m_l u_l(T) + (m - m_l) u_v(T)
+# Energy (adiabatic walls, rigid tank):  dU/dt = -mdot_inj h_out - mdot_vnt h_v
+#     h_out = h_l while bulk liquid feeds the injector; afterwards the outflow is the homogeneous
+#     tank mixture, h_out = (U + P V)/m (N2O is a "wet" fluid: the expanding vapor stays inside the
+#     dome, so the tank remains two-phase with a vanishing liquid fraction).
+# Then  Tdot = (dU/dt - dU/dm * mdot) / dU/dT  with exact partial derivatives (autodiff of the
+# property splines). Liquid run-out is latched (tnk_vap_only). Injector models for liquid feed:
+#   'Incompressible' (SPI): CdA sqrt(2 rho_l dP)
+#   'HEM'                 : CdA G_HEM(T, Pc)   (isentropic homogeneous equilibrium, choked)
+#   'Dyer'                : CdA [k/(1+k) SPI + 1/(1+k) HEM],  k = sqrt((P1 - Pc)/(Pv - Pc)) = 1 for a
+#                           self-pressurized tank (P1 = Pv)
+# Mixture/vapor feed: 'Incompressible' with the tank mixture density m/V, or 'Real Gas' (legacy).
+
+def _eq_liquid_mass(T, m, V, get_sat_props):
+    p = get_sat_props(T)
+    return (V - m/p['rho_v'])/(1.0/p['rho_l'] - 1.0/p['rho_v'])
+
+
+def _eq_energy(T, m, V, get_sat_props):
+    p = get_sat_props(T)
+    ml = _eq_liquid_mass(T, m, V, get_sat_props)
+    return ml*p['u_l'] + (m - ml)*p['u_v']
+
+
+def d_eq_tank(s, x, xmap, get_sat_props, get_hem):
+    m = x[xmap['tnk_m_ox']]
+    T = x[xmap['tnk_T']]
+    V = s['tnk_V']
+    NCdA = s['tnk_inj_N']*s['tnk_inj_CdA']
+    p = get_sat_props(T)
+    rho_l, rho_v = p['rho_l'], p['rho_v']
+    Pt = p['Pv']
+    Pc = x[xmap['cmbr_P']]
+    Pa = s['Pa']
+    dP = jnp.maximum(Pt - Pc, 0.0)
+
+    ml = _eq_liquid_mass(T, m, V, get_sat_props)
+    latched = x[xmap['tnk_vap_only']] > 0.5
+    bulk = (~latched) & (ml > 0.0)
+    U = _eq_energy(T, m, V, get_sat_props)
+    dU_dT, dU_dm = jax.grad(_eq_energy, argnums=(0, 1))(T, m, V, get_sat_props)
+    dP_dT = jax.grad(lambda T: get_sat_props(T)['Pv'])(T)
+
+    # Liquid feed
+    spi = NCdA*jnp.sqrt(2.0*rho_l*dP)
+    model = s['tnk_inj_liq_model']
+    if model == 'Incompressible':
+        m_liq_feed = spi
+    elif model in ('HEM', 'Dyer'):
+        if get_hem is None:
+            raise ValueError(f"injector model {model.v!r} needs get_hem (hrap.fluid.bake_hem_coolprop)")
+        hem = NCdA*get_hem(T, Pc)*jnp.where(dP > 0.0, 1.0, 0.0)
+        m_liq_feed = hem if model == 'HEM' else 0.5*(spi + hem)
+    else:
+        raise ValueError(f'unknown liquid injector model {model}')
+    # Mixture/vapor feed
+    rho_mix = m/V
+    if s['tnk_inj_vap_model'] == 'Real Gas':
+        Mcc = jnp.minimum(jnp.sqrt(p['Z']*1.31*188.91*T*(Pc/Pt)**(0.31/1.31)), 1.0)
+        m_vap_feed = (NCdA*Pt/jnp.sqrt(T))*jnp.sqrt(1.31/(p['Z']*188.91))*Mcc*(1 + 0.31/2*Mcc**2)**(-2.31/0.62)
+    else:
+        m_vap_feed = NCdA*jnp.sqrt(2.0*rho_mix*dP)
+    mdot_inj = jnp.where(bulk, m_liq_feed, m_vap_feed)
+    mdot_inj = jnp.where(m > 0.0, mdot_inj, 0.0)
+
+    # Vent (vapor), legacy flow formula
+    Matm = jnp.minimum(jnp.sqrt(p['Z']*1.31*188.91*T*(Pa/Pt)**(0.31/1.31)), 1.0)
+    mdot_vnt = jnp.where(s['tnk_vnt_S'] == 0, 0.0,
+                         (s['tnk_vnt_CdA']*Pt/jnp.sqrt(T))*jnp.sqrt(1.31/(p['Z']*188.91))*Matm*(1 + 0.31/2*Matm**2)**(-2.31/0.62))
+
+    h_out = jnp.where(bulk, p['h_l'], (U + Pt*V)/jnp.maximum(m, 1e-12))
+    dU = -mdot_inj*h_out - mdot_vnt*p['h_v']
+    mdot_ox = -(mdot_inj + mdot_vnt)
+    Tdot = (dU - dU_dm*mdot_ox)/dU_dT
+    Pdot = dP_dT*Tdot
+
+    T_lo = getattr(get_sat_props, 'T_min', None)
+    if T_lo is not None:
+        depleted = T <= T_lo
+        mdot_inj = jnp.where(depleted, 0.0, mdot_inj)
+        mdot_vnt = jnp.where(depleted, 0.0, mdot_vnt)
+        mdot_ox = jnp.where(depleted, 0.0, mdot_ox)
+        Tdot = jnp.where(depleted & (Tdot < 0.0), 0.0, Tdot)
+        Pdot = jnp.where(depleted & (Pdot < 0.0), 0.0, Pdot)
+
+    mdot_inj = jnp.where(s['tnk_vnt_S'] == 2, mdot_inj + mdot_vnt, mdot_inj)
+
+    x = store_x(x, xmap, tnk_P=Pt, tnk_Tdot=Tdot, tnk_Pdot=Pdot, tnk_mdot_ox=mdot_ox, tnk_mdot_inj=mdot_inj,
+                tnk_mdot_vnt=mdot_vnt, tnk_m_ox_liq=jnp.maximum(ml, 0.0), tnk_m_ox_vap=m - jnp.maximum(ml, 0.0),
+                tnk_rho_ox_liq=rho_l, tnk_rho_ox_vap=rho_v, tnk_U=U, tnk_h_out=h_out)
+    return x
+
+
+def u_eq_tank(s, x, xmap):
+    return store_x(x, xmap,
+        tnk_m_ox=jnp.maximum(x[xmap['tnk_m_ox']], 0.0),
+        tnk_vap_only=jnp.where(x[xmap['tnk_m_ox_liq']] <= 0.0, 1.0, x[xmap['tnk_vap_only']]),
+    )
+
+
+def make_eq_tank(get_sat_props, get_hem=None, **kwargs):
+    """Equilibrium two-phase tank (see above). get_sat_props from hrap.fluid.bake_sat_coolprop (needs
+    u_l, u_v, h_l, h_v); get_hem from hrap.fluid.bake_hem_coolprop for the 'HEM'/'Dyer' injectors."""
+    return make_part(
+        s = {
+            'V': 0.0,
+            'vnt_S': 0,
+            'vnt_CdA': 0.0,
+            'inj_CdA': 0.0,
+            'inj_N': 1,
+            'inj_vap_model': StaticVar('Incompressible'),
+            'inj_liq_model': StaticVar('Dyer'),
+        },
+        x = {
+            'T': 293.0, 'm_ox': 1.0,
+            'Pdot': 0.0, 'mdot_inj': 0.0, 'mdot_vnt': 0.0, 'P': 101e3,
+            'm_ox_liq': 0.0, 'm_ox_vap': 0.0, 'rho_ox_liq': 0.0, 'rho_ox_vap': 0.0,
+            'vap_only': 0.0, 'U': 0.0, 'h_out': 0.0,
+        },
+        req_s = ['V', 'inj_CdA'],
+        req_x = ['m_ox'],
+        dx = {'m_ox': 'mdot_ox', 'T': 'Tdot'},
+        typename = 'tnk',
+        fpreprs = p_sat_tank,
+        fderiv  = partial(d_eq_tank, get_sat_props=get_sat_props, get_hem=get_hem),
+        fupdate = u_eq_tank,
+        **kwargs,
+    )

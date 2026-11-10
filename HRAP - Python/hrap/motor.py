@@ -36,7 +36,7 @@ jax.config.update('jax_enable_x64', True)
 
 import hrap.core as core
 from hrap.burn3d import shapes, RegressionLaw
-from hrap.engine3d import EngineResult, run_engine_3d, ambient_gas_mass
+from hrap.engine3d import EngineResult, run_engine_3d
 
 _IN = 0.0254
 PROP_DIR = Path(_files('hrap'))/'resources'/'propellant_configs'
@@ -65,12 +65,13 @@ class MotorConfig:
     P_tank: float = None
     vent_CdA: float = 0.0
     vent_to_chamber: bool = False
+    tank_model: str = 'equilibrium'   # 'equilibrium' (energy-conserving, default) or 'legacy'
 
     # Injector
     inj_N: int = 1
     inj_d: float = 0.5*_IN       # hole diameter
     inj_Cd: float = 0.22
-    inj_liq_model: str = 'Incompressible'
+    inj_liq_model: str = 'Dyer'             # 'Dyer', 'HEM', 'Incompressible' (legacy tank: Incompressible only)
     inj_vap_model: str = 'Incompressible'   # or 'Real Gas'
 
     # Grain
@@ -92,11 +93,12 @@ class MotorConfig:
     ER: float = 4.99
     noz_Cd: float = 0.995
     noz_eff: float = 0.97
+    noz_sep_ratio: float = 0.4   # Summerfield separation criterion p_sep/Pa (0 disables)
     Pa: float = 101325.0
 
     # Integration
     T: float = 10.0
-    dt: float = 1e-3
+    dt: float = None             # None: dt = chamber filling time constant / 10 (capped at 1 ms)
     stepper: str = 'rk4'
 
     def replace(self, **kw):
@@ -161,10 +163,20 @@ def saturation(fluid):
     def make():
         import CoolProp.CoolProp as CP
         import hrap.fluid as hfluid
-        T_lo = max(CP.PropsSI('Ttriple', fluid), 150.0) + 0.5
-        T_hi = CP.PropsSI('Tcrit', fluid) - 0.3
-        return hfluid.bake_sat_coolprop(fluid, np.linspace(T_lo, T_hi, 96))
+        return hfluid.bake_sat_coolprop(fluid, np.linspace(*_T_range(fluid), 256))
     return _cached(('sat', fluid), make)
+
+
+def _T_range(fluid):
+    import CoolProp.CoolProp as CP
+    return max(CP.PropsSI('Ttriple', fluid), 150.0) + 0.5, CP.PropsSI('Tcrit', fluid) - 0.3
+
+
+def hem_table(fluid):
+    def make():
+        import hrap.fluid as hfluid
+        return hfluid.bake_hem_coolprop(fluid, np.linspace(*_T_range(fluid), 64))
+    return _cached(('hem', fluid), make)
 
 
 def initial_tank_state(cfg):
@@ -267,18 +279,27 @@ def build_grain(cfg, verbose=False):
 
 # --- engine assembly and run ----------------------------------------------------------------------
 def _parts(cfg):
-    from hrap.tank import make_sat_tank
+    from hrap.tank import make_sat_tank, make_eq_tank
     from hrap.chamber import make_chamber
     from hrap.nozzle import make_cd_nozzle
     T0, m0, info = initial_tank_state(cfg)
-    tnk = make_sat_tank(
+    if cfg.tank_model == 'equilibrium':
+        hem = hem_table(cfg.fluid) if cfg.inj_liq_model in ('HEM', 'Dyer') else None
+        make_tank = lambda *a, **k: make_eq_tank(*a, get_hem=hem, **k)
+    elif cfg.tank_model == 'legacy':
+        if cfg.inj_liq_model != 'Incompressible':
+            raise ValueError("the legacy tank supports inj_liq_model='Incompressible' only")
+        make_tank = make_sat_tank
+    else:
+        raise ValueError("tank_model must be 'equilibrium' or 'legacy'")
+    tnk = make_tank(
         saturation(cfg.fluid), V=cfg.tank_V, T=T0, m_ox=m0,
         inj_CdA=cfg.inj_Cd*np.pi/4*cfg.inj_d**2, inj_N=int(cfg.inj_N),
         inj_liq_model=core.StaticVar(cfg.inj_liq_model), inj_vap_model=core.StaticVar(cfg.inj_vap_model),
         vnt_S=(2 if cfg.vent_to_chamber else 1) if cfg.vent_CdA > 0 else 0, vnt_CdA=cfg.vent_CdA,
     )
     cmbr = make_chamber(cstar_eff=cfg.cstar_eff)
-    noz = make_cd_nozzle(thrt=cfg.throat_d, ER=cfg.ER, eff=cfg.noz_eff, Cd=cfg.noz_Cd)
+    noz = make_cd_nozzle(thrt=cfg.throat_d, ER=cfg.ER, eff=cfg.noz_eff, Cd=cfg.noz_Cd, sep_ratio=cfg.noz_sep_ratio)
     ik, iM, iT = chemistry(cfg.propellant)
     return tnk, cmbr, noz, dict(chem_interp_k=ik, chem_interp_M=iM, chem_interp_T=iT, Pa=cfg.Pa), info
 
@@ -289,6 +310,8 @@ def run_motor(cfg, grain=None, snapshot_times=(), verbose=False):
     tnk, cmbr, noz, kw, info = _parts(cfg)
     stepper = STEPPERS[cfg.stepper]
     grain = build_grain(cfg, verbose) if grain is None else grain
+    if cfg.dt is None:
+        cfg = dataclasses.replace(cfg, dt=auto_dt(cfg, grain))
     t0 = time.time()
     if cfg.mode == '3d':
         res = run_engine_3d(grain, law, tnk, cmbr, noz, cfg.T, dt=cfg.dt, stepper=stepper, V_free=cfg.V_free,
@@ -299,6 +322,23 @@ def run_motor(cfg, grain=None, snapshot_times=(), verbose=False):
     return res
 
 
+def initial_port_volume(cfg, grain):
+    if cfg.mode == '3d':
+        return float(np.sum(grain.w*grain.port_areas()))
+    return cfg.grain_L*float(grain[0].A[0])
+
+
+def auto_dt(cfg, grain):
+    """Time step resolving the chamber filling/emptying time constant
+    tau = m/mdot_out = V/(Cd At Gamma sqrt(RT)), with sqrt(RT) = Gamma c* and a high c* = 1800 m/s
+    (shortest tau), at the initial (smallest) gas volume: dt = tau/10, at most 1 ms."""
+    G = 0.6581  # Gamma(1.2)
+    At = np.pi/4*cfg.throat_d**2
+    V = cfg.V_free + initial_port_volume(cfg, grain)
+    tau = V/(cfg.noz_Cd*At*G*G*1800.0*cfg.cstar_eff)
+    return float(min(1e-3, tau/10))
+
+
 def _run_2d(cfg, grain, law, tnk, cmbr, noz, stepper, kw):
     from hrap.grain_axial import make_axial_grain
     tab, kap, sec = grain
@@ -306,12 +346,10 @@ def _run_2d(cfg, grain, law, tnk, cmbr, noz, stepper, kw):
     grn = make_axial_grain(A, M, tab.dd, tab.A_env, cfg.grain_L, cfg.grain_OD, law=law, kappa=kap)
     s, x, method = core.make_engine(tnk, grn, cmbr, noz, **kw)
     xm = method['xmap']
-    for f in method['fpreprs']:
-        x = f(s, x, xm)
     V_env = cfg.grain_L*tab.A_env
     V_fuel0 = cfg.grain_L*(tab.A_env - float(tab.A[0]))
-    V0 = cfg.V_free + V_env
-    x = core.store_x(x, xm, cmbr_V0=V0, cmbr_m_g=ambient_gas_mass(V0 - V_fuel0, cfg.Pa))
+    x = core.store_x(x, xm, cmbr_V0=cfg.V_free + V_env)
+    x = core.initialize(s, x, method)
     t, _, xs = core.make_integrator(stepper, method)(s, x, dt=cfg.dt, T=cfg.T, do_init=False)
     xs = np.asarray(xs)
     z = np.linspace(0.0, cfg.grain_L, cfg.n_z_2d)

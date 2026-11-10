@@ -91,7 +91,21 @@ class EngineResult:
             'fuel_remaining_kg': float(self.m_fuel0 - self.m_fuel_burned[-1]),
             't_burnthrough_s': float(self.t_burnthrough),
             'tank_P_final_Pa': float(self['tnk_P'][-1]),
+            # Time (s, while thrusting) the propellant table had to be clamped: O/F or Pc outside its range
+            'chem_OF_clamped_s': self._time_flag('cmbr_chem_clamp', 1, on),
+            'chem_Pc_clamped_s': self._time_flag('cmbr_chem_clamp', 2, on),
+            'nozzle_separated_s': float(np.sum(self['noz_separated'][on] > 0.5)*self._dt) if 'noz_separated' in self.xmap else 0.0,
         }
+
+    @property
+    def _dt(self):
+        return float(self.t[1] - self.t[0]) if self.t.size > 1 else 0.0
+
+    def _time_flag(self, key, bit, on):
+        if key not in self.xmap:
+            return 0.0
+        f = np.round(self[key]).astype(int)
+        return float(np.sum(((f & bit) > 0) & on)*self._dt)
 
     def to_csv(self, path, keys=None, stations=('grn_G', 'grn_rdot')):
         import csv
@@ -187,11 +201,9 @@ def run_engine_3d(grain, law, tank, cmbr, noz, T, dt=1e-3, stepper=core.step_rk4
     grn = make_axial_grain(A_tab, M_tab, dd, grain.A_env, grain.L, OD, law=law)
     s, x, method = core.make_engine(tank, grn, cmbr, noz, **engine_kw)
     xmap = method['xmap']
-    for f in method['fpreprs']:
-        x = f(s, x, xmap)
-    Pa = s.get('Pa', 101e3)
-    V0 = V_free + V_env
-    x = core.store_x(x, xmap, cmbr_V0=V0, cmbr_m_g=ambient_gas_mass(V0 - V_fuel0, Pa))
+    # Chamber volume = free volume + grain envelope; gas fill from the actual gas volume (core.initialize)
+    x = core.store_x(x, xmap, cmbr_V0=V_free + V_env)
+    x = core.initialize(s, x, method)
 
     N_total = int(np.floor(T/dt + 1e-9))
     if n_buf is None:
