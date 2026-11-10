@@ -95,3 +95,51 @@ def test_app_headless_end_to_end(tmp_path):
         assert 'Input error' in dpg.get_value('status') and not app.busy
     finally:
         dpg.destroy_context()
+
+
+def test_app_cad_button_cfd_and_thermal(tmp_path, monkeypatch):
+    dpg = pytest.importorskip('dearpygui.dearpygui')
+    from hrap.gui.app import App, _tag
+    from hrap.burn3d import cad
+    monkeypatch.setitem(gm.CFD_GRIDS, 'Coarse (fast)', (30, 10, 30, 10))
+    step = cad.write_star_grain_step(tmp_path/'g.step', 0.05, 0.15, 5, 0.007, 0.012, units='m')
+    dpg.create_context()
+    try:
+        dpg.create_viewport(title='test', width=1200, height=800)
+        app = App()
+        app.build()
+        dpg.setup_dearpygui()
+
+        def wait(flag):
+            t0 = time.time()
+            while flag() and time.time() - t0 < 600:
+                app.frame(); time.sleep(0.05)
+            app.frame()
+
+        # Add-file button path: switches to 3D/CAD and validates the mesh
+        app.add_cad_file(None, {'file_path_name': str(step)})
+        assert dpg.get_value(_tag('port_type')) == 'STEP/STL file' and dpg.get_value(_tag('mode')) == gm.MODE_3D
+        wait(lambda: dpg.get_value('cad_info').startswith('Checking'))
+        assert 'watertight' in dpg.get_value('cad_info') and 'OD 50.0 mm' in dpg.get_value('cad_info')
+        # CFD and thermal need a motor run first
+        app.run_cfd()
+        assert 'Run the motor first' in dpg.get_value('cfd_status')
+        for k, val in dict(T=0.6, tank_V=1.0, n_xy=20, n_z=7, snapshots='0', throat_d=8.0).items():
+            dpg.set_value(_tag(k), val)
+        app.run()
+        wait(lambda: app.busy)
+        assert app.res is not None and app.res.mode == '3d', dpg.get_value('status')
+        dpg.set_value('cfd_t', 0.4)
+        app.run_cfd()
+        wait(lambda: app.cfd_busy)
+        r = app.cfd['result']
+        assert r is not None, dpg.get_value('cfd_status')
+        assert abs(r.summary['mass_imbalance']) < 1e-5
+        assert len(dpg.get_item_children('cfd_table', 1)) == 13
+        app.render_cfd()
+        app.run_thermal()
+        wait(lambda: app.thermal_busy)
+        w, _ = app.thermal
+        assert w.Tw.max() > 400.0 and 'peak inner-wall temperature' in dpg.get_value('th_status')
+    finally:
+        dpg.destroy_context()

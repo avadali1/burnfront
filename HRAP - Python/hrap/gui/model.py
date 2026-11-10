@@ -98,6 +98,14 @@ FIELDS = [
           tip='Shifting: products re-equilibrate as they expand (Cantera, validated against NASA CEA).\n'
               'The first run per fuel builds a cached table (a few minutes).'),
     Field('Pa', 'Ambient pressure', 'Chamber & Nozzle', unit='kPa', scale=1e3, default=101.325),
+    # --- nozzle geometry and wall (CFD and thermal analysis)
+    Field('conv_angle', 'Convergent half-angle', 'Nozzle geometry & wall', unit='deg', default=45.0),
+    Field('div_angle', 'Divergent half-angle (cone)', 'Nozzle geometry & wall', unit='deg', default=15.0),
+    Field('rcu_ratio', 'Throat upstream radius / Rt', 'Nozzle geometry & wall', default=1.5),
+    Field('rcd_ratio', 'Throat downstream radius / Rt', 'Nozzle geometry & wall', default=0.382),
+    Field('wall_material', 'Throat/nozzle material', 'Nozzle geometry & wall', 'combo',
+          items=['Graphite', 'Copper', 'Steel (4130)', 'Aluminium (6061)', 'Silica phenolic'], default='Graphite'),
+    Field('wall_thickness', 'Wall thickness', 'Nozzle geometry & wall', unit='mm', scale=1e-3, default=10.0),
     # --- numerics
     Field('T', 'Simulated time', 'Numerics', unit='s', default=10.0),
     Field('auto_dt', 'Automatic time step', 'Numerics', 'bool', default=True),
@@ -354,3 +362,77 @@ def total_mass(res, dry_mass):
 def export_eng(path, res, dry_mass, OD, L, mfg='HRAP'):
     import hrap.core as core
     core.export_eng(path, res.t, res['noz_thrust'], total_mass(res, dry_mass), OD=OD, L=L, mfg=mfg)
+
+
+# --- CFD / thermal helpers --------------------------------------------------------------------------
+CFD_GRIDS = {'Coarse (fast)': (60, 18, 70, 20), 'Medium': (90, 27, 105, 30), 'Fine (slow)': (135, 40, 160, 45)}
+
+
+def nozzle_geometry(v, cfg):
+    from hrap.cfd.nozzle_flow import NozzleGeometry
+    chamber_d = cfg.grain_OD if cfg.port.get('type') != 'file' else max(cfg.grain_OD, 2.5*cfg.throat_d)
+    return NozzleGeometry.conical(cfg.throat_d, cfg.ER, chamber_d, conv_angle_deg=float(v['conv_angle']),
+                                  div_angle_deg=float(v['div_angle']), rcu_ratio=float(v['rcu_ratio']),
+                                  rcd_ratio=float(v['rcd_ratio']))
+
+
+def cfd_conditions(res, cfg, t):
+    """Chamber stagnation state at time t of a motor run -> FlowConditions (+ notes). With shifting-
+    equilibrium expansion an effective gamma reproduces the engine's exit-pressure ratio."""
+    from hrap.cfd.nozzle_flow import FlowConditions, effective_gamma
+    i = int(np.clip(np.searchsorted(res.t, t), 0, res.t.size - 1))
+    P0, T0, g, R = (float(res[k][i]) for k in ('cmbr_P', 'cmbr_T', 'cmbr_k', 'cmbr_R'))
+    note = f'frozen gamma = {g:.4f}'
+    if res.info.get('expansion') == 'equilibrium' and 'noz_Pe' in res.xmap and res['noz_Pe'][i] > 0:
+        g_eff = effective_gamma(cfg.ER, float(res['noz_Pe'][i])/P0, g)
+        note = f'effective gamma = {g_eff:.4f} (matches the shifting-equilibrium exit pressure; frozen {g:.4f})'
+        g = g_eff
+    return FlowConditions(P0=P0, T0=T0, gamma=g, Rgas=R, Pa=cfg.Pa), i, note
+
+
+def render_cfd(grid, F, label, title='', size=(860, 430), dark=True, vmin=None, vmax=None):
+    """Ansys-style contour of a cell field F (NI, NJ) mirrored about the axis -> RGBA float32."""
+    import matplotlib
+    matplotlib.use('Agg', force=False)
+    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    w, h = size
+    fig = Figure(figsize=(w/100, h/100), dpi=100)
+    FigureCanvasAgg(fig)
+    bg = (0.12, 0.12, 0.13) if dark else (1, 1, 1)
+    fg = (0.88, 0.88, 0.88) if dark else (0.1, 0.1, 0.1)
+    fig.patch.set_facecolor(bg)
+    ax = fig.add_axes([0.06, 0.12, 0.80, 0.78])
+    ax.set_facecolor(bg)
+    Fm = np.ma.masked_invalid(F)
+    lo = np.nanmin(F) if vmin is None else vmin
+    hi = np.nanmax(F) if vmax is None else vmax
+    X, R = grid.X*1e3, grid.R*1e3
+    for sgn in (1, -1):
+        pc = ax.pcolormesh(X, sgn*R, Fm, cmap='turbo', shading='flat', vmin=lo, vmax=hi, rasterized=True)
+    # nozzle wall and lip
+    xw = X[:grid.ni_noz + 1, grid.nj_noz]
+    rw = R[:grid.ni_noz + 1, grid.nj_noz]
+    for sgn in (1, -1):
+        ax.plot(xw, sgn*rw, color=fg, lw=1.2)
+        ax.plot([xw[-1], xw[-1]], [sgn*rw[-1], sgn*R[grid.ni_noz, -1]], color=fg, lw=1.2)
+    ax.set_aspect('equal')
+    ax.set_xlim(X.min(), X.max()); ax.set_ylim(-R.max(), R.max())
+    ax.set_xlabel('x [mm] (throat at 0)', color=fg); ax.set_ylabel('r [mm]', color=fg)
+    ax.tick_params(colors=fg, labelsize=8)
+    for sp in ax.spines.values():
+        sp.set_color(fg)
+    cax = fig.add_axes([0.88, 0.12, 0.025, 0.78])
+    cb = fig.colorbar(pc, cax=cax)
+    cb.set_label(label, color=fg); cb.ax.tick_params(colors=fg, labelsize=8)
+    if title:
+        ax.set_title(title, color=fg, fontsize=10)
+    fig.canvas.draw()
+    return np.ascontiguousarray(np.asarray(fig.canvas.buffer_rgba(), dtype=np.float32)/255.0)
+
+
+def thermal_inputs(res):
+    """Chamber histories for the wall heat-transfer model, decimated to <= 400 samples."""
+    idx = np.unique(np.linspace(0, res.t.size - 1, min(400, res.t.size)).astype(int))
+    return dict(t=res.t[idx], P0=res['cmbr_P'][idx], T0=res['cmbr_T'][idx], gamma=res['cmbr_k'][idx],
+                Rgas=res['cmbr_R'][idx], cstar=res['cmbr_cstar'][idx])
