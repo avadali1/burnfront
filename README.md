@@ -1,22 +1,22 @@
 # Burnfront
 
-Burnfront is a simulator for self-pressurizing hybrid rocket motors (N2O oxidizer with a solid fuel grain). It is a modified version (a fork) of the **Hybrid Rocket Analysis Program (HRAP)** by Robert Nickel and the University of Tennessee Rocket Engineering Team. Burnfront is not affiliated with or endorsed by the HRAP authors.
+Burnfront is a simulator for self pressurizing hybrid rocket motors (N2O oxidizer with a solid fuel grain). It is a modified version (a fork) of the **Hybrid Rocket Analysis Program (HRAP)** by Robert Nickel and the University of Tennessee Rocket Engineering Team. Burnfront is not affiliated with or endorsed by the HRAP authors.
 
-The name comes from the main addition: the burning surface of the fuel grain (the burn front) is tracked in full 3D through any port shape, including grains imported from CAD.
+The name comes from the main addition, the burning surface of the fuel grain (the burn front) is tracked in full 3D through any port shape, including grains imported from CAD.
 
 > **Modification notice.** This is a modified version of HRAP ([github.com/rnickel1/HRAP_Source](https://github.com/rnickel1/HRAP_Source)), changed by Arushi Vadali starting in November 2026. The changes are listed under [What Burnfront changes](#what-burnfront-changes), and in detail in the commit history.
 
 ## Python version
 
-The Python version is where all of Burnfront's work is. See [python/README.md](python/README.md) for installation and usage.
+The Python version is where all of Burnfront's work is. See [python/README.md](python/README.md) for installation and use. 
 
 Compared with HRAP, it adds:
 - **3D fuel-grain burn simulation** from STEP/STL CAD files or analytic ports, including twisted and helical ports and multi-port grains. A fast 2D outline mode is also available.
 - **Energy-conserving tank and chamber models.**
-  - **Injector:** Dyer and HEM two-phase models.
-  - **Nozzle expansion:** shifting chemical equilibrium, validated against NASA CEA.
-- **Nozzle and plume CFD** with live contours, plus nozzle-wall heating over the burn.
-- **Parallel parameter sweeps** written to CSV.
+  - **Injector:** Dyer and HEM two phase models.
+  - **Nozzle expansion:** shifting chemical equilibrium which is validated against NASA CEA.
+- **Nozzle and plume CFD** with live contours, plus nozzle wall heating over the burn.
+- **Parallel parameter sweeps** written to CSV. 
 - **A GUI** for all of the above. Start it with `burnfront`.
 
 The Python code lives in the `python` folder; the package and command are `burnfront`.
@@ -46,11 +46,11 @@ Results from HRAP's Python version are not comparable with Burnfront's (see "Cha
 
 ## MATLAB version (original HRAP, unmodified)
 
-Navigate to the "Installers/MATLAB version" directory. Prerequisites for the installation include having the MATLAB runtime installed (free.) and in order to save/export data the application needs to be run as administrator.
+Go to the "Installers/MATLAB version" directory. Prerequisites for the installation include having the MATLAB runtime installed (free.) and in order to save/export data the application needs to be run as administrator.
 
 ## Validation cases (original HRAP)
 
-These hot-fire comparisons were made with the original HRAP. They have not yet been repeated with Burnfront.
+These hot fire comparisons were made with the original HRAP. They have not been repeated with Burnfront.
 
 Baltic Space HyPEx hot fire (r/rocketry user FlyingBanana)
 
@@ -68,13 +68,11 @@ Student Space Technology Association 127mm Flight Motor
 
 ![image](https://github.com/user-attachments/assets/89afa8e9-32a9-4057-92d3-aaae7cde900f)
 
-## Contributing
-
-Help is welcome in these areas:
-- A non-equilibrium tank model, with separate liquid and vapor temperatures and heat and mass transfer between them.
+## Work ahead
+- A non equilibrium tank model, with separate liquid and vapor temperatures and heat and mass transfer between them.
 - Viscous and turbulent CFD (boundary layers, plume mixing, separation), and ablating nozzle materials.
 - Equilibrium expansion for metallized fuels (condensed alumina).
-- More propellant config files, and hot-fire data for validating regression laws.
+- More propellant config files, and hot fire data for validating regression laws.
 
 ## Credits
 
@@ -84,14 +82,6 @@ Help is welcome in these areas:
 - Source: [github.com/rnickel1/HRAP_Source](https://github.com/rnickel1/HRAP_Source).
 
 **Burnfront** modifications: Arushi Vadali.
-
-**Third-party material included:**
-- The Bubblegum Sans font, by Angel Koziupa and Alejandro Paul, under the SIL Open Font License. Its license is in `python/burnfront/resources/fonts/BubblegumSans_OFL.txt`.
-- The bundled propellant tables were generated with NASA CEA, and the equilibrium expansion uses NASA thermodynamic data through Cantera.
-
-## Repository history
-
-The first commit, "Baseline: upstream HRAP_Source snapshot", is an unmodified copy of HRAP as published by its authors. Git lists Arushi Vadali as its author only because that is who imported it. The code in that commit was written by the HRAP authors credited below. Every later commit is a Burnfront change.
 
 ## License
 
