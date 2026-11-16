@@ -281,9 +281,8 @@ def compute_table(propellant, OF, Pc, shifting=True, n_jobs=None, verbose=False)
     tasks = [(propellant, of, list(Pc), shifting) for of in OF]
     n_jobs = n_jobs or min(len(OF), os.cpu_count() or 1)
     if n_jobs > 1:
-        import multiprocessing as mp
-        from concurrent.futures import ProcessPoolExecutor
-        with ProcessPoolExecutor(n_jobs, mp_context=mp.get_context('spawn')) as ex:
+        from burnfront._parallel import spawn_pool
+        with spawn_pool(n_jobs) as ex:
             rows = list(ex.map(_row, tasks))
     else:
         rows = [_row(t) for t in tasks]

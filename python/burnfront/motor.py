@@ -24,7 +24,7 @@ import itertools
 import os
 import time
 import warnings
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import as_completed
 from dataclasses import dataclass, field
 from importlib.resources import files as _files
 from pathlib import Path
@@ -35,6 +35,7 @@ import jax
 jax.config.update('jax_enable_x64', True)
 
 import burnfront.core as core
+from burnfront._parallel import spawn_pool
 from burnfront.burn3d import shapes, RegressionLaw
 from burnfront.engine3d import EngineResult, run_engine_3d
 
@@ -447,8 +448,7 @@ def sweep(base, params, mode='grid', n_jobs=1, csv_path=None, history_dir=None, 
             if verbose:
                 print(f'[{i+1}/{len(runs)}] {ov} -> {rows[i].get("status")}')
     else:
-        import multiprocessing as mp
-        with ProcessPoolExecutor(max_workers=n_jobs, mp_context=mp.get_context('spawn')) as ex:
+        with spawn_pool(n_jobs) as ex:
             futs = [ex.submit(_worker, i, ov, cfg, grains[_grain_key(cfg)], history_dir)
                     for i, (ov, cfg) in enumerate(runs)]
             for n_done, f in enumerate(as_completed(futs), 1):

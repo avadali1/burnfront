@@ -124,7 +124,7 @@ Two operations are slow the first time:
 
 ## Validation
 
-All checks below are automated in `tests/` (85 tests).
+All checks below are automated in `tests/` (86 tests).
 
 | Check | Result |
 |---|---|
