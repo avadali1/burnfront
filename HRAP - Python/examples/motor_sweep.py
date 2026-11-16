@@ -4,7 +4,7 @@
 import argparse
 from pathlib import Path
 
-from hrap.motor import MotorConfig, run_motor, sweep
+from burnfront.motor import MotorConfig, run_motor, sweep
 
 if __name__ == '__main__':          # required for parallel sweeps on Windows (spawned workers)
     ap = argparse.ArgumentParser()

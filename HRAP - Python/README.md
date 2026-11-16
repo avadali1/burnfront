@@ -2,7 +2,7 @@
 
 Burnfront simulates self-pressurizing hybrid rocket motors: a saturated N2O tank, the injector, a regressing fuel grain, the combustion chamber and the nozzle, integrated together in time.
 
-It is a modified version of the Python Hybrid Rocket Analysis Program (HRAP) by Robert Nickel and contributors; its package lists Drew Nickel and Thomas A. Scott as authors ([github.com/rnickel1/HRAP_Source](https://github.com/rnickel1/HRAP_Source)), changed by Arushi Vadali starting in November 2026. It is licensed under GPL v3; see the [top-level README](../README.md#license) for credits and license terms. The Python package and its commands are still named `hrap`.
+It is a modified version of the Python Hybrid Rocket Analysis Program (HRAP) by Robert Nickel and contributors; its package lists Drew Nickel and Thomas A. Scott as authors ([github.com/rnickel1/HRAP_Source](https://github.com/rnickel1/HRAP_Source)), changed by Arushi Vadali starting in November 2026. It is licensed under GPL v3; see the [top-level README](../README.md#license) for credits and license terms.
 
 Compared with HRAP, it adds the following:
 
@@ -20,9 +20,19 @@ Compared with HRAP, it adds the following:
 
 ## Installation
 
-Burnfront is not on PyPI: `pip install hrap` installs the original HRAP package. Install from this folder instead. Python 3.10 or newer is required.
+Python 3.10 or newer is required. Burnfront is not on PyPI yet (note that `pip install hrap` installs the original HRAP, not Burnfront).
+
+**Quick install from GitHub** (no clone needed):
 
 ```
+python -m pip install "burnfront[3d] @ git+https://github.com/avadali1/burnfront.git#subdirectory=HRAP%20-%20Python"
+```
+
+**From a clone** (for development):
+
+```
+git clone https://github.com/avadali1/burnfront.git
+cd burnfront
 cd "HRAP - Python"
 python -m venv .venv
 .venv\Scripts\activate            # Windows   (Linux/macOS: source .venv/bin/activate)
@@ -41,10 +51,10 @@ python -m pip install -e ".[3d,dev]"
 ## Running the GUI
 
 ```
-hrap
+burnfront
 ```
 
-The original GUI is still available as `hrap-legacy`.
+The original HRAP GUI is still available as `burnfront-legacy`.
 
 ### Typical workflow
 1. **Pick a grain.**
@@ -73,7 +83,7 @@ The original GUI is still available as `hrap-legacy`.
 **File** menu: save and load configurations (JSON), and export the time history (CSV) or the thrust curve (ENG).
 
 Two operations are slow the first time:
-- The first run with a new fuel builds its shifting-equilibrium expansion table, which takes about 2 minutes on 16 cores. It is cached in `~/.hrap_cache` and loads instantly afterwards.
+- The first run with a new fuel builds its shifting-equilibrium expansion table, which takes about 2 minutes on 16 cores. It is cached in `~/.burnfront_cache` and loads instantly afterwards.
 - JAX compiles the engine on the first run of each configuration.
 
 ---
@@ -81,13 +91,13 @@ Two operations are slow the first time:
 ## Physics
 
 ### Grain
-- **3D level-set burn** (`hrap.burn3d`).
+- **3D level-set burn** (`burnfront.burn3d`).
   - **Port representation:** the port surface is a signed distance field on a voxel grid, and the outer case is inert. For CAD files the distance is computed exactly to the tessellated surface; for twisted and helical shapes, to a fine ruled mesh.
   - **Regression:** the front recedes along the local normal using the exact (Hopf–Lax) solution of the level-set equation.
   - **Regression rate:** `rdot = phi * a * G^n * L^m`. The local mass flux G(z) comes from an axial flow model, using either oxidizer only or oxidizer plus fuel added upstream, divided by the local open port area. a and n default to the propellant file (ABS: 0.198 mm/s, 0.325); phi is a swirl multiplier.
   - **Outputs:** fuel mass flow, port volume, burning area, burn-through time and sliver.
-- **2D outline mode** (`hrap.burn3d.section`). The same regression and flux definitions on a single cross-section, with an optional helical correction that approximates twisted ports in 2D.
-- **Engine coupling** (`hrap.engine3d`). The tank, chamber and nozzle are integrated in JAX. The grain geometry enters as offset tables measured from the level set, and these are re-measured every time the grain regresses one grid cell.
+- **2D outline mode** (`burnfront.burn3d.section`). The same regression and flux definitions on a single cross-section, with an optional helical correction that approximates twisted ports in 2D.
+- **Engine coupling** (`burnfront.engine3d`). The tank, chamber and nozzle are integrated in JAX. The grain geometry enters as offset tables measured from the level set, and these are re-measured every time the grain regresses one grid cell.
 
 ### Tank and injector
 - **Equilibrium tank** (default). Saturated two-phase N2O with mass, volume and energy conserved exactly, plus optional wall heat capacity. Liquid run-out is latched, and afterwards the tank delivers its homogeneous vapor mixture.
@@ -106,7 +116,7 @@ Two operations are slow the first time:
   - **Frozen.** A single γ for the whole expansion.
 - **Nozzle flow regimes** handled: choked, subsonic (unchoked), and flow separation (Summerfield criterion, `p_sep / Pa = 0.4` by default).
 
-### CFD and nozzle thermal (`hrap.cfd`)
+### CFD and nozzle thermal (`burnfront.cfd`)
 - **CFD solver.** Axisymmetric Euler equations, cell-centred finite volume (HLLC Riemann solver, MUSCL reconstruction with the van Albada limiter, SSP-RK2 with local time stepping), JAX-compiled.
 - **CFD domain.** A body-fitted grid over the aft chamber and the conical converging-diverging nozzle, plus an exhaust-plume block.
 - **Gas properties.** The chamber state comes from the motor run at the chosen time. An effective γ is used so that the frozen-γ flow reproduces the shifting-equilibrium exit pressure.
@@ -134,7 +144,7 @@ All checks below are automated in `tests/` (85 tests).
 ## Python API
 
 ```python
-from hrap.motor import MotorConfig, run_motor, sweep
+from burnfront.motor import MotorConfig, run_motor, sweep
 
 cfg = MotorConfig(
     mode='3d',                                   # or '2d'
@@ -153,7 +163,7 @@ res.to_csv('history.csv')
 rows = sweep(cfg, {'inj_N': [4, 6, 8], 'fill': [0.7, 0.9]}, n_jobs=4, csv_path='sweep.csv')
 ```
 
-All quantities are SI. See the docstrings of `hrap.motor`, `hrap.burn3d` (`cad.load_grain`, `shapes`, `burn_prescribed`), `hrap.expansion`, `hrap.cfd.nozzle_flow` and `hrap.cfd.thermal`.
+All quantities are SI. See the docstrings of `burnfront.motor`, `burnfront.burn3d` (`cad.load_grain`, `shapes`, `burn_prescribed`), `burnfront.expansion`, `burnfront.cfd.nozzle_flow` and `burnfront.cfd.thermal`.
 
 The engine is written with JAX for just-in-time compilation. If you modify the engine parts, note JAX's functional style for loops and conditionals: https://docs.jax.dev/en/latest/control-flow.html.
 
@@ -191,7 +201,7 @@ Fixed in Burnfront relative to HRAP, roughly in order of impact:
 
 ## Developer notes
 
-The source lives in `hrap/`. Main modules:
+The source lives in `burnfront/`. Main modules:
 
 | Module | Contents |
 |---|---|

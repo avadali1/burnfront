@@ -1,7 +1,7 @@
-"""HRAP motor GUI: 3D level-set grains (STEP/STL or analytic) or the 2D outline model, coupled to the
-tank, injector, chamber and nozzle models of hrap.motor.
+"""Burnfront motor GUI: 3D level-set grains (STEP/STL or analytic) or the 2D outline model, coupled to the
+tank, injector, chamber and nozzle models of burnfront.motor.
 
-Run with ``hrap`` (or ``python -m hrap.gui.app``). The legacy GUI is ``hrap-legacy``.
+Run with ``burnfront`` (or ``python -m burnfront.gui.app``). The legacy HRAP GUI is ``burnfront-legacy``.
 """
 import os
 import queue
@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import dearpygui.dearpygui as dpg
 
-from hrap.gui import model as gm
+from burnfront.gui import model as gm
 
 RENDER_W, RENDER_H = 860, 560
 CFD_W, CFD_H = 900, 420
@@ -168,7 +168,7 @@ class App:
 
         def work():
             try:
-                from hrap.burn3d import cad
+                from burnfront.burn3d import cad
                 _, r = cad.load_grain(path, units=units, axis=axis, n_xy=24, n_z=6, verbose=False)
                 verr = (r.volume - r.cad_volume)/r.cad_volume if np.isfinite(r.cad_volume) else float('nan')
                 txt = (f'{Path(path).name}: watertight mesh, OD {r.OD*1e3:.1f} mm, length {r.L*1e3:.1f} mm, '
@@ -197,7 +197,7 @@ class App:
 
         def work():
             try:
-                res = __import__('hrap.motor', fromlist=['run_motor']).run_motor(cfg, snapshot_times=tuple(snaps))
+                res = __import__('burnfront.motor', fromlist=['run_motor']).run_motor(cfg, snapshot_times=tuple(snaps))
                 self.q.put(('done', (cfg, res)))
             except Exception as e:
                 self.q.put(('error', f'{type(e).__name__}: {e}\n{traceback.format_exc()}'))
@@ -393,7 +393,7 @@ class App:
 
         def work():
             try:
-                from hrap.motor import sweep
+                from burnfront.motor import sweep
                 rows = sweep(cfg, params, mode=mode, n_jobs=n_jobs, csv_path=csv_path, verbose=False)
                 self.q.put(('sweep', rows))
             except Exception as e:
@@ -438,7 +438,7 @@ class App:
         try:
             OD = self.cfg.grain_OD if self.cfg.port['type'] != 'file' else 2*np.sqrt(np.max(self.res.grain.A_env)/np.pi)
             gm.export_eng(app_data['file_path_name'], self.res, dpg.get_value('dry_mass'), OD,
-                          dpg.get_value('motor_L')*1e-3, mfg='HRAP')
+                          dpg.get_value('motor_L')*1e-3, mfg='Burnfront')
             self.status(f"Wrote {app_data['file_path_name']}")
         except Exception as e:
             self.status(f'ENG export failed: {e}', error=True)
@@ -450,7 +450,7 @@ class App:
         if self.res is None:
             dpg.set_value('cfd_status', 'Run the motor first: the CFD uses its chamber state at the chosen time.')
             return
-        from hrap.cfd import nozzle_flow as nf
+        from burnfront.cfd import nozzle_flow as nf
         v = self.values()
         cfg = self.cfg
         try:
@@ -483,7 +483,7 @@ class App:
         self.cfd_stop = True
 
     def render_cfd(self):
-        from hrap.cfd import nozzle_flow as nf
+        from burnfront.cfd import nozzle_flow as nf
         c = self.cfd
         if c is None or (c['U'] is None and c['result'] is None):
             return
@@ -534,7 +534,7 @@ class App:
         if self.res is None:
             dpg.set_value('th_status', 'Run the motor first: the wall heating uses its chamber history.')
             return
-        from hrap.cfd.thermal import wall_transient
+        from burnfront.cfd.thermal import wall_transient
         v = self.values()
         try:
             geom = gm.nozzle_geometry(v, self.cfg)
@@ -650,7 +650,7 @@ class App:
 
     # ---------------------------------------------------------------------------------- layout
     def build(self):
-        root = Path(imp_files('hrap'))
+        root = Path(imp_files('burnfront'))
         with dpg.font_registry():
             font = dpg.add_font(str(root/'resources'/'fonts'/'Roboto-Regular.ttf'), 15)
         dpg.bind_font(font)
@@ -852,8 +852,8 @@ def main():
     import jax
     jax.config.update('jax_enable_x64', True)
     dpg.create_context()
-    root = Path(imp_files('hrap'))
-    dpg.create_viewport(title='HRAP', width=1480, height=920, small_icon=str(root/'resources'/'icon.ico'),
+    root = Path(imp_files('burnfront'))
+    dpg.create_viewport(title='Burnfront', width=1480, height=920, small_icon=str(root/'resources'/'icon.ico'),
                         large_icon=str(root/'resources'/'icon.ico'))
     app = App()
     app.build()

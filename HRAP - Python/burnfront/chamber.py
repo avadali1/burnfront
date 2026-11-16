@@ -15,11 +15,11 @@ gas and ~12x too slow pressure transients).
 Products: k, M, T_c from the propellant table at (O/F, Pc), clamped to the table (flagged in
 cmbr_chem_clamp). Inflow temperature T_in = cstar_eff^2 T_c (c* ~ sqrt(T)), so the steady c* equals
 cstar_eff * c*_ideal. With no fuel flow the inflow is unburned oxidizer vapor at tank temperature.
-The nozzle mass flow is evaluated here (hrap.nozzle.mass_flow) from the current gas state, so the
+The nozzle mass flow is evaluated here (burnfront.nozzle.mass_flow) from the current gas state, so the
 chamber never uses a stale nozzle flow.
 """
-from hrap.core import store_x, make_part
-from hrap.nozzle import mass_flow, gamma_fn, eq_lookup
+from burnfront.core import store_x, make_part
+from burnfront.nozzle import mass_flow, gamma_fn, eq_lookup
 
 import jax
 import jax.numpy as jnp

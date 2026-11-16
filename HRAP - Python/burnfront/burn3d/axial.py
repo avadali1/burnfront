@@ -11,8 +11,8 @@ d(A)/dt = P * kappa * rdot = P_eff * rdot (mass-consistent).
 """
 import numpy as np
 
-from hrap.burn3d.measure import hermite_eval
-from hrap.burn3d.flow import station_rates
+from burnfront.burn3d.measure import hermite_eval
+from burnfront.burn3d.flow import station_rates
 
 
 def interp_levels(T, dd, d, xp=np):

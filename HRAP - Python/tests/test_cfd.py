@@ -3,8 +3,8 @@ import numpy as np
 import pytest
 from scipy.special import erf
 
-from hrap.cfd import nozzle_flow as nf
-from hrap.cfd.thermal import ShellConduction, bartz, isentropic_mach, wall_transient
+from burnfront.cfd import nozzle_flow as nf
+from burnfront.cfd.thermal import ShellConduction, bartz, isentropic_mach, wall_transient
 
 GEOM = nf.NozzleGeometry.conical(0.02, 4.0, 0.07)       # rc_up/Rt = 1.5, 15 deg cone
 COARSE = (60, 18, 70, 20)

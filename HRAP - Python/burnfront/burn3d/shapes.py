@@ -10,9 +10,9 @@ f is NOT a 3D distance and is only used for the sign.
 """
 import numpy as np
 
-from hrap.sdf import sd_poly
-from hrap.burn3d.grid import Grid3D, Grain3D
-from hrap.burn3d.meshdist import signed_distance_on_grid
+from burnfront.sdf import sd_poly
+from burnfront.burn3d.grid import Grid3D, Grain3D
+from burnfront.burn3d.meshdist import signed_distance_on_grid
 
 
 class Shape:
@@ -164,7 +164,7 @@ def port_sdf(shape, grid, chi, port_band_cells=3, mesh_refine=1):
     ds = h/mesh_refine
     dz = min(h, hz)/mesh_refine
     # Surface truncated at the end faces (inhibited ends): fuel near an end is reached only by the
-    # port surface inside the grain, the same convention as CAD grains (hrap.burn3d.cad)
+    # port surface inside the grain, the same convention as CAD grains (burnfront.burn3d.cad)
     V, F = surface_mesh(shape, grid.z[0], grid.z[-1], ds, dz)
     f = evaluate(shape.f, grid)
     chi = np.broadcast_to(chi, grid.shape)

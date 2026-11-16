@@ -3,4 +3,4 @@ results/
 /dist/
 *.egg-info/
 .VSCodeCounter/
-hrap/ssts_thermochem.txt
+burnfront/ssts_thermochem.txt

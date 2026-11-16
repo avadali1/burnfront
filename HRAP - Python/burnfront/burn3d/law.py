@@ -1,7 +1,7 @@
 """Regression law parameters."""
 from dataclasses import dataclass
 
-# ABS, from hrap/resources/propellant_configs/ABS.mat (prop_Reg, prop_Rho)
+# ABS, from burnfront/resources/propellant_configs/ABS.mat (prop_Reg, prop_Rho)
 ABS_A, ABS_N, ABS_M, ABS_RHO = 0.198, 0.325, 0.0, 1070.0
 
 

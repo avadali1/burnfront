@@ -4,8 +4,8 @@ from dataclasses import dataclass
 import numpy as np
 from scipy import ndimage
 
-from hrap.burn3d import measure
-from hrap.burn3d.levelset import reinitialize
+from burnfront.burn3d import measure
+from burnfront.burn3d.levelset import reinitialize
 
 
 @dataclass

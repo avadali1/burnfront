@@ -8,17 +8,17 @@ from importlib.resources import files as imp_files
 
 import matplotlib.pyplot as plt
 
-import hrap.core as core
-import hrap.chem as chem
-import hrap.fluid as fluid
-from hrap.tank    import *
-from hrap.grain   import *
-from hrap.chamber import *
-from hrap.nozzle  import *
-from hrap.units   import _in, _ft, _lbf, _atm
+import burnfront.core as core
+import burnfront.chem as chem
+import burnfront.fluid as fluid
+from burnfront.tank    import *
+from burnfront.grain   import *
+from burnfront.chamber import *
+from burnfront.nozzle  import *
+from burnfront.units   import _in, _ft, _lbf, _atm
 
 jax.config.update("jax_enable_x64", True)
-hrap_root = Path(imp_files('hrap'))
+hrap_root = Path(imp_files('burnfront'))
 file_prefix = 'nitrous_plastisol'
 
 

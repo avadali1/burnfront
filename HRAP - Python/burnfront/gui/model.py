@@ -1,4 +1,4 @@
-"""GUI-independent logic for the HRAP motor GUI (testable without a display).
+"""GUI-independent logic for the Burnfront motor GUI (testable without a display).
 
 - FIELDS: the editable inputs (section, label, MotorConfig field, unit, kind)
 - values_to_config / config_to_values: widget values (GUI units) <-> MotorConfig (SI)
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 
-from hrap.motor import MotorConfig, PROP_DIR
+from burnfront.motor import MotorConfig, PROP_DIR
 
 MODE_2D, MODE_3D = '2D outline', '3D (STEP/STL)'
 PORT_TYPES = ['Circle', 'Star', 'STEP/STL file', 'Cross-section image']
@@ -359,8 +359,8 @@ def total_mass(res, dry_mass):
     return dry_mass + res['tnk_m_ox'] + m_f + res['cmbr_m_g']
 
 
-def export_eng(path, res, dry_mass, OD, L, mfg='HRAP'):
-    import hrap.core as core
+def export_eng(path, res, dry_mass, OD, L, mfg='Burnfront'):
+    import burnfront.core as core
     core.export_eng(path, res.t, res['noz_thrust'], total_mass(res, dry_mass), OD=OD, L=L, mfg=mfg)
 
 
@@ -369,7 +369,7 @@ CFD_GRIDS = {'Coarse (fast)': (60, 18, 70, 20), 'Medium': (90, 27, 105, 30), 'Fi
 
 
 def nozzle_geometry(v, cfg):
-    from hrap.cfd.nozzle_flow import NozzleGeometry
+    from burnfront.cfd.nozzle_flow import NozzleGeometry
     chamber_d = cfg.grain_OD if cfg.port.get('type') != 'file' else max(cfg.grain_OD, 2.5*cfg.throat_d)
     return NozzleGeometry.conical(cfg.throat_d, cfg.ER, chamber_d, conv_angle_deg=float(v['conv_angle']),
                                   div_angle_deg=float(v['div_angle']), rcu_ratio=float(v['rcu_ratio']),
@@ -379,7 +379,7 @@ def nozzle_geometry(v, cfg):
 def cfd_conditions(res, cfg, t):
     """Chamber stagnation state at time t of a motor run -> FlowConditions (+ notes). With shifting-
     equilibrium expansion an effective gamma reproduces the engine's exit-pressure ratio."""
-    from hrap.cfd.nozzle_flow import FlowConditions, effective_gamma
+    from burnfront.cfd.nozzle_flow import FlowConditions, effective_gamma
     i = int(np.clip(np.searchsorted(res.t, t), 0, res.t.size - 1))
     P0, T0, g, R = (float(res[k][i]) for k in ('cmbr_P', 'cmbr_T', 'cmbr_k', 'cmbr_R'))
     note = f'frozen gamma = {g:.4f}'

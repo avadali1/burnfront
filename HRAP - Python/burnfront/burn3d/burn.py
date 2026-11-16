@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from hrap.burn3d import measure, flow, levelset
+from burnfront.burn3d import measure, flow, levelset
 
 
 @dataclass

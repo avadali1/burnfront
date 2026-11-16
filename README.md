@@ -17,9 +17,9 @@ Compared with HRAP, it adds:
   - **Nozzle expansion:** shifting chemical equilibrium, validated against NASA CEA.
 - **Nozzle and plume CFD** with live contours, plus nozzle-wall heating over the burn.
 - **Parallel parameter sweeps** written to CSV.
-- **A GUI** for all of the above.
+- **A GUI** for all of the above. Start it with `burnfront`.
 
-The Python package, its folder and its commands are still named `hrap` for now.
+The Python code lives in the `HRAP - Python` folder (the name is kept from HRAP); the package and command are `burnfront`.
 
 ## What Burnfront changes
 
@@ -40,7 +40,7 @@ The Python package, its folder and its commands are still named `hrap` for now.
 - The tank flipped between liquid and vapor models after liquid run-out.
 - The example scripts mistyped the nozzle discharge-coefficient keyword.
 
-**Unchanged.** The MATLAB version (below) and the original Python GUI (`hrap-legacy`) are kept as they were in HRAP.
+**Unchanged.** The MATLAB version (below) and the original Python GUI (`burnfront-legacy`) are kept as they were in HRAP.
 
 Results from HRAP's Python version are not comparable with Burnfront's (see "Changes that affect results" in the [Python README](HRAP%20-%20Python/README.md#changes-that-affect-results)).
 
@@ -86,7 +86,7 @@ Help is welcome in these areas:
 **Burnfront** modifications: Arushi Vadali.
 
 **Third-party material included:**
-- The Bubblegum Sans font, by Angel Koziupa and Alejandro Paul, under the SIL Open Font License. Its license is in `HRAP - Python/hrap/resources/fonts/BubblegumSans_OFL.txt`.
+- The Bubblegum Sans font, by Angel Koziupa and Alejandro Paul, under the SIL Open Font License. Its license is in `HRAP - Python/burnfront/resources/fonts/BubblegumSans_OFL.txt`.
 - The bundled propellant tables were generated with NASA CEA, and the equilibrium expansion uses NASA thermodynamic data through Cantera.
 
 ## Repository history

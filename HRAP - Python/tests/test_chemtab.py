@@ -5,8 +5,8 @@ import pytest
 import scipy.io
 import jax.numpy as jnp
 
-from hrap.chemtab import load_mat_tables, make_interpolators, orient
-from hrap.motor import PROP_DIR
+from burnfront.chemtab import load_mat_tables, make_interpolators, orient
+from burnfront.motor import PROP_DIR
 
 
 @pytest.mark.parametrize('path', sorted(PROP_DIR.glob('*.mat')), ids=lambda p: p.stem)

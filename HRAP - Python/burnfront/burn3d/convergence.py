@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from hrap.burn3d.burn import burn_prescribed
+from burnfront.burn3d.burn import burn_prescribed
 
 
 def celik(phi, h):

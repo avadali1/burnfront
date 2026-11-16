@@ -2,8 +2,8 @@
 import numpy as np
 import pytest
 
-from hrap.burn3d import cad, shapes, RegressionLaw, burn_prescribed
-from hrap.burn3d.convergence import celik, grid_convergence
+from burnfront.burn3d import cad, shapes, RegressionLaw, burn_prescribed
+from burnfront.burn3d.convergence import celik, grid_convergence
 
 OD, L = 0.08, 0.3
 STAR = (6, 0.012, 0.025)

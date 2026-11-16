@@ -11,11 +11,11 @@ import pytest
 import scipy.io
 import jax.numpy as jnp
 
-import hrap.core as core
-from hrap.grain import (make_circle_shape, make_shiftOF_grain, make_constOF_grain,
+import burnfront.core as core
+from burnfront.grain import (make_circle_shape, make_shiftOF_grain, make_constOF_grain,
                         port_area, ABS_REG)
 
-HRAP_ROOT = Path(imp_files('hrap'))
+HRAP_ROOT = Path(imp_files('burnfront'))
 
 
 # --- Minimal harness: constant oxidizer source, no chamber/nozzle dynamics ---------------------
@@ -121,17 +121,17 @@ def test_constOF_reports_open_port_flux():
 def test_full_engine_abs_shiftOF():
     """compare_legacy.py motor (ABS, 2.5" port, 4.5" OD, 30" long) with an 80%-liquid CoolProp tank:
     finite, physical, mass-consistent."""
-    import hrap.fluid as fluid
-    from hrap.tank import make_sat_tank
-    from hrap.chamber import make_chamber
-    from hrap.nozzle import make_cd_nozzle
-    from hrap.units import _in, _ft
+    import burnfront.fluid as fluid
+    from burnfront.tank import make_sat_tank
+    from burnfront.chamber import make_chamber
+    from burnfront.nozzle import make_cd_nozzle
+    from burnfront.units import _in, _ft
     from jax.scipy.interpolate import RegularGridInterpolator
 
     c = scipy.io.loadmat(HRAP_ROOT/'resources'/'propellant_configs'/'ABS.mat')['s'][0][0]
     assert tuple(c['prop_Reg'].ravel()) == pytest.approx(ABS_REG)
     grid = (c['prop_OF'].ravel(), c['prop_Pc'].ravel())
-    from hrap.chemtab import mat_interpolators
+    from burnfront.chemtab import mat_interpolators
     ik, iM, iT = mat_interpolators(HRAP_ROOT/'resources'/'propellant_configs'/'ABS.mat')
 
     OD, ID, L, rho = 4.5*_in, 2.5*_in, 30.0*_in, 1070.0

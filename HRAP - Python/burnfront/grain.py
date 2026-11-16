@@ -7,15 +7,15 @@ from jax.lax import cond
 from functools import partial, reduce
 
 import interpax
-from hrap.core import store_x, make_part
-import hrap.sdf as sdf
-import matplotlib.cm as cm  # kept: examples rely on it via `from hrap.grain import *`
+from burnfront.core import store_x, make_part
+import burnfront.sdf as sdf
+import matplotlib.cm as cm  # kept: examples rely on it via `from burnfront.grain import *`
 
 
 import math
 
 
-# Default regression law: ABS (hrap/resources/propellant_configs/ABS.mat, prop_Reg)
+# Default regression law: ABS (burnfront/resources/propellant_configs/ABS.mat, prop_Reg)
 #   rdot [m/s] = 1e-3 * a * G^n * L^m, a in mm/s, G in kg/(m^2 s), L in m
 ABS_REG = (0.198, 0.325, 0.0)
 
@@ -126,7 +126,7 @@ def _section_d2a(sec, Nd):
     Returns (A0 solid area, d samples, perimeter samples, table). A0 = pi/4 OD^2 - A_port(0) uses the
     tabulated port area, so the lumped models' A(d) = A0 - int P dd reaches 0 exactly at burnout.
     """
-    from hrap.burn3d.measure import hermite_eval
+    from burnfront.burn3d.measure import hermite_eval
     tab = sec.table()
     pos = np.nonzero(tab.M > 0)[0]
     d_end = tab.levels[min(pos[-1] + 1, tab.levels.size - 1)] if pos.size else 0.0
@@ -140,7 +140,7 @@ def _section_d2a(sec, Nd):
 def bake_d2a(grn_OD, ports_xy, Nx, Nd):
     """Use description of ports to precompute the regression behavor of the grain
 
-    Uses the same exact-offset level-set tables as the 2D/3D burn models (hrap.burn3d.section):
+    Uses the same exact-offset level-set tables as the 2D/3D burn models (burnfront.burn3d.section):
     port boundaries are exact polygon signed distances, offset geometry is {phi < d}, and the
     burning perimeter is dA/dd from sub-cell areas clipped by the case.
 
@@ -156,7 +156,7 @@ def bake_d2a(grn_OD, ports_xy, Nx, Nd):
       initial solid cross section area, tabulated regression distance (d2a input), tabulated exposed
       arc length (d2a output), list of contours for plotting
     """
-    from hrap.burn3d.section import Section2D
+    from burnfront.burn3d.section import Section2D
     if type(ports_xy) not in [list, tuple]: ports_xy = [ports_xy]
     sec = Section2D.from_polygons([np.asarray(p, dtype=float) for p in ports_xy], grn_OD, n_xy=Nx)
     A0, grn_d, grn_d2a, _ = _section_d2a(sec, Nd)
@@ -315,12 +315,12 @@ def make_shiftOF_grain(shape, **kwargs):
 def bake_arbitrary_d2a(path, grain_diameter, n_step=100, n_visu=30, n_xy=512):
     """Bake regression tables from a cross-section image (grain dark/gray, port(s) light).
 
-    Port outlines are sub-pixel grayscale iso-contours (hrap.burn3d.section.image_port_polygons);
+    Port outlines are sub-pixel grayscale iso-contours (burnfront.burn3d.section.image_port_polygons);
     regression uses the same exact-offset tables as the 2D/3D models. Returns
     (distances, perimeters, contours, grn_A0) with contours as [x, y, step_index] in image-style
     coordinates (origin at the lower-left of the grain's bounding square), grn_A0 the solid area.
     """
-    from hrap.burn3d.section import Section2D, image_port_polygons
+    from burnfront.burn3d.section import Section2D, image_port_polygons
     print(f"Baking file at: {path}")
     print(f"grain_diameter: {grain_diameter}")
     print(f"Settings: steps={n_step}, level curves={n_visu}")

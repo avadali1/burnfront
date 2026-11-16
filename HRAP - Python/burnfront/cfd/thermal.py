@@ -135,7 +135,7 @@ class ShellConduction:
 def wall_transient(geom, t, P0, T0, gamma, Rgas, cstar, material='Graphite', thickness=0.01, n_x=60,
                    n_r=30, T_init=294.0, h_out=10.0, T_amb=294.0, wall_mach=None, dt_max=0.01):
     """Inner-wall temperature history along the nozzle for chamber histories P0(t), T0(t), gamma(t),
-    Rgas(t), cstar(t) (arrays on t). geom: hrap.cfd.nozzle_flow.NozzleGeometry.
+    Rgas(t), cstar(t) (arrays on t). geom: burnfront.cfd.nozzle_flow.NozzleGeometry.
     wall_mach: optional (x, M) wall Mach distribution (e.g. from the CFD) replacing isentropic M(x)."""
     mat = MATERIALS[material]
     x = np.linspace(geom.x_start, geom.x_exit, n_x)

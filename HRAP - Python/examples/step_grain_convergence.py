@@ -7,8 +7,8 @@ from pathlib import Path
 
 import numpy as np
 
-from hrap.burn3d import cad, RegressionLaw
-from hrap.burn3d.convergence import grid_convergence
+from burnfront.burn3d import cad, RegressionLaw
+from burnfront.burn3d.convergence import grid_convergence
 
 ap = argparse.ArgumentParser()
 ap.add_argument('file', nargs='?')
@@ -29,7 +29,7 @@ if path is None:
 
 # Validate once and print the mesh report
 _, report = cad.load_grain(path, units=args.units, axis=args.axis, n_xy=16, n_z=4)
-law = RegressionLaw()  # ABS defaults (a, n from hrap/resources/propellant_configs/ABS.mat), total flux
+law = RegressionLaw()  # ABS defaults (a, n from burnfront/resources/propellant_configs/ABS.mat), total flux
 res = [int(r) for r in args.res.split(',')]
 rep = grid_convergence(
     lambda n: cad.load_grain(path, units=args.units, axis=args.axis, n_xy=n,

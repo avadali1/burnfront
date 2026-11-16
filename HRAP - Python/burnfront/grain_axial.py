@@ -2,7 +2,7 @@
 
 The grain is represented by offset tables A[z, k] (open port area after in-plane offset k*dd),
 slopes M = dA/dd and optional helical factor kappa, at n_z axial stations. Each station's depth
-d_i is an integrated state. The physics is hrap.burn3d.axial.station_eval, shared with the numpy
+d_i is an integrated state. The physics is burnfront.burn3d.axial.station_eval, shared with the numpy
 drivers, so engine and standalone burns use identical math:
   - local flux G(z) = (mdot_ox + fuel added upstream)/A_port(z)  ('total') or mdot_ox/A_port(z)
   - rdot = phi * 1e-3 * a * G^n * L^m along the surface normal
@@ -13,10 +13,10 @@ from functools import partial
 import numpy as np
 import jax.numpy as jnp
 
-from hrap.core import store_x, make_part
-from hrap.burn3d import measure
-from hrap.burn3d.axial import station_eval
-from hrap.burn3d.law import RegressionLaw
+from burnfront.core import store_x, make_part
+from burnfront.burn3d import measure
+from burnfront.burn3d.axial import station_eval
+from burnfront.burn3d.law import RegressionLaw
 
 
 def _station_idx(xmap, prefix, nz):
@@ -82,12 +82,12 @@ def make_axial_grain(A_tab, M_tab, dd, A_env, L, OD, law=None, kappa=None, **kwa
 
 def make_section_grain(port, OD, L, n_z=21, law=None, n_xy=256, twist_rate=0.0,
                        helix_radius=0.0, helix_pitch=None, **kwargs):
-    """2D fast mode: grain of one cross-section ``port`` (hrap.burn3d.shapes.Shape) extruded over L.
+    """2D fast mode: grain of one cross-section ``port`` (burnfront.burn3d.shapes.Shape) extruded over L.
 
     twist_rate / helix_radius+helix_pitch enable the optional helical 2D approximation.
     Returns (part, section, table, kappa).
     """
-    from hrap.burn3d.section import Section2D
+    from burnfront.burn3d.section import Section2D
     sec = Section2D(port, OD, n_xy=n_xy)
     tab = sec.table()
     kap = None

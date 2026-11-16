@@ -45,7 +45,7 @@ from functools import partial
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Dict
-from hrap.units import _atm
+from burnfront.units import _atm
 
 Rhat = 8314 # J/(K*kmol), universal gas constant
 

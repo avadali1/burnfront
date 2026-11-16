@@ -35,7 +35,7 @@ from scipy.optimize import brentq
 RU = 8314.462618
 MC = 12.011
 # Reactant cards: element counts per formula unit and standard enthalpy of formation (J/mol), as in
-# hrap/thermo.dat; ABS (C3.85 H4.85 N0.43, +62.63 kJ/mol) after Whitmore et al.
+# burnfront/thermo.dat; ABS (C3.85 H4.85 N0.43, +62.63 kJ/mol) after Whitmore et al.
 REACTANTS = {
     'N2O(L)': ({'N': 2, 'O': 1}, 65100.0),
     'ABS': ({'C': 3.85, 'H': 4.85, 'N': 0.43}, 62630.0),
@@ -296,7 +296,7 @@ def compute_table(propellant, OF, Pc, shifting=True, n_jobs=None, verbose=False)
 
 
 def cache_dir():
-    base = Path(os.environ.get('HRAP_CACHE', Path.home()/'.hrap_cache'))
+    base = Path(os.environ.get('BURNFRONT_CACHE', Path.home()/'.burnfront_cache'))
     base.mkdir(parents=True, exist_ok=True)
     return base
 

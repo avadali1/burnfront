@@ -5,9 +5,9 @@ import csv
 import numpy as np
 import pytest
 
-import hrap.core as core
-from hrap.burn3d import shapes, burn_prescribed
-from hrap.motor import MotorConfig, run_motor, sweep, initial_tank_state, saturation, build_grain, regression_law
+import burnfront.core as core
+from burnfront.burn3d import shapes, burn_prescribed
+from burnfront.motor import MotorConfig, run_motor, sweep, initial_tank_state, saturation, build_grain, regression_law
 
 IN = 0.0254
 # Small, quick motor: 2 L tank, 60 mm x 250 mm grain
@@ -121,7 +121,7 @@ def test_vapor_blowdown_derivative_is_exact():
     """Analytic dT/dm of T = T1 (Z(T)/Z1 m/m1)^0.3 vs a central difference of the converged implicit solution."""
     import jax.numpy as jnp
     from scipy.optimize import brentq
-    from hrap.tank import sat_vap_blowdown
+    from burnfront.tank import sat_vap_blowdown
     sat = saturation('NitrousOxide')
     T1, m1, mdot = 270.0, 1.3, -0.4
     Z = lambda T: float(sat(T)['Z'])

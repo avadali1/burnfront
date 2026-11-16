@@ -4,8 +4,8 @@ import time
 import numpy as np
 import pytest
 
-from hrap.gui import model as gm
-from hrap.burn3d import shapes
+from burnfront.gui import model as gm
+from burnfront.burn3d import shapes
 
 
 def test_values_to_config_units_and_ports():
@@ -52,7 +52,7 @@ def test_port_surface_matches_port():
 
 def test_app_headless_end_to_end(tmp_path):
     dpg = pytest.importorskip('dearpygui.dearpygui')
-    from hrap.gui.app import App, _tag
+    from burnfront.gui.app import App, _tag
     dpg.create_context()
     try:
         dpg.create_viewport(title='test', width=1200, height=800)
@@ -99,8 +99,8 @@ def test_app_headless_end_to_end(tmp_path):
 
 def test_app_cad_button_cfd_and_thermal(tmp_path, monkeypatch):
     dpg = pytest.importorskip('dearpygui.dearpygui')
-    from hrap.gui.app import App, _tag
-    from hrap.burn3d import cad
+    from burnfront.gui.app import App, _tag
+    from burnfront.burn3d import cad
     monkeypatch.setitem(gm.CFD_GRIDS, 'Coarse (fast)', (30, 10, 30, 10))
     step = cad.write_star_grain_step(tmp_path/'g.step', 0.05, 0.15, 5, 0.007, 0.012, units='m')
     dpg.create_context()

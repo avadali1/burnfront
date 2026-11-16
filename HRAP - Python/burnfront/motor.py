@@ -1,9 +1,9 @@
 """Configuration-driven motor runs: arbitrary starting conditions, 2D/3D grain modes, parameter sweeps.
 
-    from hrap.motor import MotorConfig, run_motor, sweep
+    from burnfront.motor import MotorConfig, run_motor, sweep
     cfg = MotorConfig(port={'type': 'star', 'n_tips': 6, 'r_valley': 0.012, 'r_tip': 0.025,
                             'twist_turns': 1.0}, grain_OD=0.08, grain_L=0.3, mode='3d')
-    res = run_motor(cfg)                  # hrap.engine3d.EngineResult
+    res = run_motor(cfg)                  # burnfront.engine3d.EngineResult
     print(res.summary())
     rows = sweep(cfg, {'inj_N': [4, 6, 8], 'fill': [0.7, 0.9]}, n_jobs=4, csv_path='sweep.csv')
 
@@ -34,18 +34,18 @@ import jax
 
 jax.config.update('jax_enable_x64', True)
 
-import hrap.core as core
-from hrap.burn3d import shapes, RegressionLaw
-from hrap.engine3d import EngineResult, run_engine_3d
+import burnfront.core as core
+from burnfront.burn3d import shapes, RegressionLaw
+from burnfront.engine3d import EngineResult, run_engine_3d
 
 _IN = 0.0254
-PROP_DIR = Path(_files('hrap'))/'resources'/'propellant_configs'
+PROP_DIR = Path(_files('burnfront'))/'resources'/'propellant_configs'
 STEPPERS = {'fe': core.step_fe, 'heun': core.step_heun, 'rk4': core.step_rk4}
 
 
 @dataclass
 class MotorConfig:
-    # Propellant: name of a file in hrap/resources/propellant_configs or a path to an HRAP .mat.
+    # Propellant: name of a file in burnfront/resources/propellant_configs or a path to an HRAP .mat.
     # a, n, m, rho override the file; phi_swirl multiplies the regression rate.
     propellant: str = 'ABS'
     a: float = None              # mm/s (HRAP units: rdot = a G^n L^m)
@@ -142,7 +142,7 @@ def _prop_path(name):
 def chemistry(propellant):
     """(k, M, T) interpolators over (O/F, Pc) from an HRAP propellant file."""
     def make():
-        from hrap.chemtab import mat_interpolators
+        from burnfront.chemtab import mat_interpolators
         return mat_interpolators(_prop_path(propellant))
     return _cached(('chem', str(propellant)), make)
 
@@ -150,8 +150,8 @@ def chemistry(propellant):
 def expansion_table(propellant):
     """Shifting-equilibrium expansion table on the propellant's (O/F, Pc) grid (cached on disk)."""
     def make():
-        from hrap import expansion
-        from hrap.chemtab import load_mat_tables
+        from burnfront import expansion
+        from burnfront.chemtab import load_mat_tables
         OF, Pc, *_ = load_mat_tables(_prop_path(propellant))
         return expansion.table_for(propellant, OF, Pc, verbose=True)
     return _cached(('expansion', str(propellant)), make)
@@ -166,7 +166,7 @@ def saturation(fluid):
     """Saturation property tables (JAX PCHIP) from the triple point to just below critical."""
     def make():
         import CoolProp.CoolProp as CP
-        import hrap.fluid as hfluid
+        import burnfront.fluid as hfluid
         return hfluid.bake_sat_coolprop(fluid, np.linspace(*_T_range(fluid), 256))
     return _cached(('sat', fluid), make)
 
@@ -178,7 +178,7 @@ def _T_range(fluid):
 
 def hem_table(fluid):
     def make():
-        import hrap.fluid as hfluid
+        import burnfront.fluid as hfluid
         return hfluid.bake_hem_coolprop(fluid, np.linspace(*_T_range(fluid), 64))
     return _cached(('hem', fluid), make)
 
@@ -220,7 +220,7 @@ def _base_shape(port, OD):
     if t == 'multi':
         return shapes.union(*[_base_shape(p, OD) for p in port['ports']])
     if t == 'image':
-        from hrap.burn3d.section import image_port_polygons
+        from burnfront.burn3d.section import image_port_polygons
         polys, _ = image_port_polygons(port['path'], OD)
         ps = [shapes.polygon(p) for p in polys]
         return ps[0] if len(ps) == 1 else shapes.union(*ps)
@@ -255,7 +255,7 @@ def build_grain(cfg, verbose=False):
         port = cfg.port
         if cfg.mode == '3d':
             if port['type'] == 'file':
-                from hrap.burn3d import cad
+                from burnfront.burn3d import cad
                 g, rep = cad.load_grain(port['path'], units=port.get('units'), axis=port.get('axis', 'z'),
                                         n_xy=cfg.n_xy, n_z=cfg.n_z, verbose=verbose)
                 g.report = rep   # mesh validation report (shown by the GUI)
@@ -263,7 +263,7 @@ def build_grain(cfg, verbose=False):
             return shapes.cylindrical_grain(port_shape_3d(port, cfg.grain_OD, cfg.grain_L),
                                             cfg.grain_OD, cfg.grain_L, n_xy=cfg.n_xy, n_z=cfg.n_z)
         if cfg.mode == '2d':
-            from hrap.burn3d.section import Section2D
+            from burnfront.burn3d.section import Section2D
             if port['type'] == 'file':
                 raise ValueError("2D mode needs a cross-section port (circle/star/polygon/multi/image), "
                                  "not a CAD file; use mode='3d'")
@@ -284,9 +284,9 @@ def build_grain(cfg, verbose=False):
 
 # --- engine assembly and run ----------------------------------------------------------------------
 def _parts(cfg):
-    from hrap.tank import make_sat_tank, make_eq_tank
-    from hrap.chamber import make_chamber
-    from hrap.nozzle import make_cd_nozzle
+    from burnfront.tank import make_sat_tank, make_eq_tank
+    from burnfront.chamber import make_chamber
+    from burnfront.nozzle import make_cd_nozzle
     T0, m0, info = initial_tank_state(cfg)
     if cfg.tank_model == 'equilibrium':
         hem = hem_table(cfg.fluid) if cfg.inj_liq_model in ('HEM', 'Dyer') else None
@@ -308,8 +308,8 @@ def _parts(cfg):
     cmbr = make_chamber(cstar_eff=cfg.cstar_eff)
     noz_kw = {}
     if cfg.noz_expansion == 'equilibrium':
-        from hrap import expansion
-        from hrap.nozzle import expansion_kwargs
+        from burnfront import expansion
+        from burnfront.nozzle import expansion_kwargs
         if expansion.supported(cfg.propellant):
             noz_kw = expansion_kwargs(expansion_table(cfg.propellant))
         else:
@@ -360,7 +360,7 @@ def auto_dt(cfg, grain):
 
 
 def _run_2d(cfg, grain, law, tnk, cmbr, noz, stepper, kw):
-    from hrap.grain_axial import make_axial_grain
+    from burnfront.grain_axial import make_axial_grain
     tab, kap, sec = grain
     A, M = tab.stations(cfg.n_z_2d)
     grn = make_axial_grain(A, M, tab.dd, tab.A_env, cfg.grain_L, cfg.grain_OD, law=law, kappa=kap)

@@ -1,10 +1,10 @@
-"""Verification of the numpy/scipy 3D level-set burn core (hrap.burn3d)."""
+"""Verification of the numpy/scipy 3D level-set burn core (burnfront.burn3d)."""
 import numpy as np
 import pytest
 from scipy.integrate import solve_ivp
 
-from hrap.burn3d import shapes, measure, flow, meshdist, RegressionLaw, burn_prescribed
-from hrap.burn3d.law import ABS_A, ABS_N, ABS_RHO
+from burnfront.burn3d import shapes, measure, flow, meshdist, RegressionLaw, burn_prescribed
+from burnfront.burn3d.law import ABS_A, ABS_N, ABS_RHO
 
 
 # --- measure ------------------------------------------------------------------------------------
@@ -107,8 +107,8 @@ def test_cylinder_burnthrough_time_and_sliver():
 def test_cylinder_3d_matches_existing_2d_jax_model():
     """Same circular port through the (fixed) JAX shiftOF engine with constant oxidizer flow."""
     import jax.numpy as jnp
-    import hrap.core as core
-    from hrap.grain import make_circle_shape, make_shiftOF_grain
+    import burnfront.core as core
+    from burnfront.grain import make_circle_shape, make_shiftOF_grain
 
     L, mox, T, dt = 0.3, 1.0, 4.0, 1e-3
     grn = make_shiftOF_grain(make_circle_shape(ID=2*R0), OD=OD, L=L, rho=ABS_RHO,

@@ -1,7 +1,7 @@
 # Purpose: Model the blowdown of saturated fluids in a simple tank
 # Authors: Drew Nickel, Thomas A. Scott
 
-from hrap.core import store_x, make_part, StaticVar
+from burnfront.core import store_x, make_part, StaticVar
 
 import jax
 import jax.numpy as jnp
@@ -338,7 +338,7 @@ def d_eq_tank(s, x, xmap, get_sat_props, get_hem):
         m_liq_feed = spi
     elif model in ('HEM', 'Dyer'):
         if get_hem is None:
-            raise ValueError(f"injector model {model.v!r} needs get_hem (hrap.fluid.bake_hem_coolprop)")
+            raise ValueError(f"injector model {model.v!r} needs get_hem (burnfront.fluid.bake_hem_coolprop)")
         hem = NCdA*get_hem(T, Pc)*jnp.where(dP > 0.0, 1.0, 0.0)
         m_liq_feed = hem if model == 'HEM' else 0.5*(spi + hem)
     else:
@@ -389,8 +389,8 @@ def u_eq_tank(s, x, xmap):
 
 
 def make_eq_tank(get_sat_props, get_hem=None, **kwargs):
-    """Equilibrium two-phase tank (see above). get_sat_props from hrap.fluid.bake_sat_coolprop (needs
-    u_l, u_v, h_l, h_v); get_hem from hrap.fluid.bake_hem_coolprop for the 'HEM'/'Dyer' injectors."""
+    """Equilibrium two-phase tank (see above). get_sat_props from burnfront.fluid.bake_sat_coolprop (needs
+    u_l, u_v, h_l, h_v); get_hem from burnfront.fluid.bake_hem_coolprop for the 'HEM'/'Dyer' injectors."""
     return make_part(
         s = {
             'V': 0.0,

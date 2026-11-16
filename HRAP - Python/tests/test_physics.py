@@ -5,8 +5,8 @@ import pytest
 import jax.numpy as jnp
 import CoolProp.CoolProp as CP
 
-from hrap.motor import MotorConfig, run_motor, saturation, hem_table
-from hrap.nozzle import mass_flow, gamma_fn, area_ratio
+from burnfront.motor import MotorConfig, run_motor, saturation, hem_table
+from burnfront.nozzle import mass_flow, gamma_fn, area_ratio
 
 FL = 'NitrousOxide'
 BASE = MotorConfig(tank_V=2.0e-3, fill=0.85, T_tank=290.0, inj_N=4, inj_d=1.2e-3, inj_Cd=0.65,
@@ -82,8 +82,8 @@ def test_nozzle_regimes():
 
 
 def _thrust(P, sep=0.4, ER=4.0, Pa=101325.0):
-    import hrap.core as core
-    from hrap.nozzle import make_cd_nozzle, d_cd_nozzle
+    import burnfront.core as core
+    from burnfront.nozzle import make_cd_nozzle, d_cd_nozzle
     noz = make_cd_nozzle(thrt=0.01, ER=ER, eff=1.0, Cd=1.0, sep_ratio=sep)
     keys = ['cmbr_P', 'cmbr_k', 'cmbr_R', 'cmbr_T', 'noz_mdot', 'noz_Me', 'noz_Pe', 'noz_thrust', 'noz_separated']
     xmap = {k: i for i, k in enumerate(keys)}
@@ -102,7 +102,7 @@ def test_nozzle_thrust_attached_equals_ideal_cf_and_separation_is_continuous():
     assert o['noz_thrust'] == pytest.approx(Cf*At*3e6, rel=1e-10) and o['noz_separated'] == 0.0
     # Chamber pressure at which the attached exit pressure equals 0.4 Pa: attached and separated thrust agree
     from scipy.optimize import brentq
-    from hrap.nozzle import M_solve
+    from burnfront.nozzle import M_solve
     Me = float(M_solve(g, ER))
     P_sep = 0.4*Pa*(1 + 0.5*(g - 1)*Me**2)**(g/(g - 1))
     a, b = _thrust(P_sep*(1 + 1e-9)), _thrust(P_sep*(1 - 1e-9))
@@ -134,7 +134,7 @@ def test_auto_dt_converged():
 
 
 def test_gas_orifice_limits():
-    from hrap.tank import gas_orifice
+    from burnfront.tank import gas_orifice
     CdA, P1, rho1, g = 1e-6, 3e6, 80.0, 1.3
     # small pressure drop -> incompressible orifice
     dP = 1e-4*P1

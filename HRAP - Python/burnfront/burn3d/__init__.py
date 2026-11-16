@@ -15,7 +15,7 @@ Verified accuracy (tests/test_burn3d.py): port areas, burn-through time and burn
 second order in the cell size; the initial burning perimeter at infinitely sharp corners is first
 order (grid-scale clipping of the corner during the first cell of regression).
 """
-from hrap.burn3d.grid import Grid3D, Grain3D
-from hrap.burn3d.law import RegressionLaw
-from hrap.burn3d import shapes, measure, flow, levelset, meshdist
-from hrap.burn3d.burn import burn_prescribed, BurnResult
+from burnfront.burn3d.grid import Grid3D, Grain3D
+from burnfront.burn3d.law import RegressionLaw
+from burnfront.burn3d import shapes, measure, flow, levelset, meshdist
+from burnfront.burn3d.burn import burn_prescribed, BurnResult

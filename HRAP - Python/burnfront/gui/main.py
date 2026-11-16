@@ -14,20 +14,20 @@ import dearpygui.dearpygui as dpg
 
 from jax.scipy.interpolate import RegularGridInterpolator
 
-import hrap.core as core
-import hrap.chem as chem
-import hrap.fluid as fluid
-import hrap.units as units
-from hrap.tank    import *
-from hrap.grain   import *
-from hrap.chamber import *
-from hrap.nozzle  import *
-from hrap.units   import _in, _ft
+import burnfront.core as core
+import burnfront.chem as chem
+import burnfront.fluid as fluid
+import burnfront.units as units
+from burnfront.tank    import *
+from burnfront.grain   import *
+from burnfront.chamber import *
+from burnfront.nozzle  import *
+from burnfront.units   import _in, _ft
 
-from hrap.gui.themes import create_babber_theme
+from burnfront.gui.themes import create_babber_theme
 from dearpygui_ext.themes import create_theme_imgui_light, create_theme_imgui_dark
 
-hrap_version = version('hrap')
+hrap_version = version('burnfront')
 
 # Virtualized Python environments may redirect these to other locations
 # For example, Windows Store Python redirects %APPDATA%\Roaming to %APPDATA%\Local\Packages\PythonSoftwareFoundation.Python.[some garbage]\LocalCache\Roaming
@@ -363,7 +363,7 @@ def main():
     jax.config.update('jax_enable_x64', True)
     
     # Ensure the app data directory for hrap exists
-    data_root = get_datadir()/'hrap'
+    data_root = get_datadir()/'burnfront'
     Path(data_root).mkdir(parents=True, exist_ok=True)
     print('app data will go in', os.path.realpath(data_root))
 
@@ -372,7 +372,7 @@ def main():
     Path(auto_root).mkdir(parents=True, exist_ok=True)
     
     # Get the HRAP install root
-    hrap_root = Path(imp_files('hrap'))
+    hrap_root = Path(imp_files('burnfront'))
     
     def apply_theme(theme, save):
         settings['theme'] = theme

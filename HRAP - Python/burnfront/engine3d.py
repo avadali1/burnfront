@@ -2,7 +2,7 @@
 
 Multi-rate coupling
 -------------------
-The engine (tank, chamber, nozzle and the tabulated axial grain of hrap.grain_axial) is integrated
+The engine (tank, chamber, nozzle and the tabulated axial grain of burnfront.grain_axial) is integrated
 in JAX with the usual fixed time step. The 3D geometry enters through per-station offset tables
 A(z, d), dA/dd measured from the level set phi:
 
@@ -14,7 +14,7 @@ A(z, d), dA/dd measured from the level set phi:
        G(z) = (mdot_ox + fuel added upstream)/A_port(z), coupled to the live injector flow and
        chamber pressure
     3. move the front by d(z) along the local normal (exact Hopf-Lax update, see
-       hrap.burn3d.levelset.hopf_lax_shift) and re-tabulate
+       burnfront.burn3d.levelset.hopf_lax_shift) and re-tabulate
 
 Within a segment the geometry is the exact offset geometry of phi, so the only coupling error is
 the level-set update itself (verified ~1e-5 of the fuel mass per segment, recorded in
@@ -26,10 +26,10 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 
-import hrap.core as core
-from hrap.burn3d import measure, levelset
-from hrap.burn3d.burn import _web
-from hrap.grain_axial import make_axial_grain
+import burnfront.core as core
+from burnfront.burn3d import measure, levelset
+from burnfront.burn3d.burn import _web
+from burnfront.grain_axial import make_axial_grain
 
 AIR_M, T_AMB = 28.97, 294.0
 
@@ -175,13 +175,13 @@ def make_segment_runner(s, method, fstep, dt, n_buf):
 def run_engine_3d(grain, law, tank, cmbr, noz, T, dt=1e-3, stepper=core.step_rk4, V_free=0.0,
                   d_step=None, levels_per_step=8, margin=2.0, n_buf=None, snapshot_times=(),
                   verbose=False, **engine_kw):
-    """Fire the engine with a 3D grain (hrap.burn3d.Grain3D).
+    """Fire the engine with a 3D grain (burnfront.burn3d.Grain3D).
 
     tank, cmbr, noz: parts from make_sat_tank / make_chamber / make_cd_nozzle.
     V_free: chamber gas volume outside the grain envelope (pre/post-combustion chambers), m^3; the
             chamber volume is set to V_free + envelope volume, so the gas volume is V_free + port volume.
     d_step: max regression per grain step (default one in-plane cell).
-    engine_kw: chem_interp_k/M/T, Pa, ... as for hrap.core.make_engine.
+    engine_kw: chem_interp_k/M/T, Pa, ... as for burnfront.core.make_engine.
     """
     g = grain.grid
     z, w = g.z, grain.w

@@ -3,9 +3,9 @@ CEA-generated propellant tables, nozzle/engine consistency."""
 import numpy as np
 import pytest
 
-import hrap.expansion as ex
-from hrap.chemtab import load_mat_tables
-from hrap.motor import PROP_DIR, MotorConfig, run_motor, expansion_table
+import burnfront.expansion as ex
+from burnfront.chemtab import load_mat_tables
+from burnfront.motor import PROP_DIR, MotorConfig, run_motor, expansion_table
 
 G0, PSI = 9.80665, 6894.757
 
@@ -59,7 +59,7 @@ def test_chamber_matches_hrap_cea_tables_with_condensed_carbon(eq):
 def test_nozzle_thrust_at_table_node():
     """Equilibrium nozzle at a table node reproduces the table's thrust coefficient."""
     import jax.numpy as jnp
-    from hrap.nozzle import make_cd_nozzle, d_cd_nozzle, expansion_kwargs
+    from burnfront.nozzle import make_cd_nozzle, d_cd_nozzle, expansion_kwargs
     tab = expansion_table('ABS')
     i, j = int(np.argmin(abs(tab.OF - 6.0))), int(np.argmin(abs(tab.Pc - 2.5e6)))
     OF, Pc = float(tab.OF[i]), float(tab.Pc[j])

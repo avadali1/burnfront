@@ -22,8 +22,8 @@ from scipy import ndimage
 from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import connected_components
 
-from hrap.burn3d.grid import Grid3D, Grain3D
-from hrap.burn3d.meshdist import MeshDistance
+from burnfront.burn3d.grid import Grid3D, Grain3D
+from burnfront.burn3d.meshdist import MeshDistance
 
 UNITS = {'m': 1.0, 'mm': 1e-3, 'cm': 1e-2, 'in': 0.0254, 'ft': 0.3048}
 
@@ -365,7 +365,7 @@ def write_star_grain_step(path, OD, L, n_tips, r_valley, r_tip, twist_turns=0.0,
     from OCP.BRepAlgoAPI import BRepAlgoAPI_Cut
     from OCP.STEPControl import STEPControl_Writer, STEPControl_AsIs
     from OCP.IFSelect import IFSelect_RetDone
-    from hrap.burn3d.shapes import star_vertices
+    from burnfront.burn3d.shapes import star_vertices
 
     k = UNITS[units] / 1e-3
     OD, L, r_valley, r_tip = OD*k, L*k, r_valley*k, r_tip*k

@@ -8,18 +8,18 @@ from importlib.resources import files as imp_files
 
 import matplotlib.pyplot as plt
 
-import hrap.core as core
-import hrap.fluid as fluid
-from hrap.tank    import *
-from hrap.grain   import *
-from hrap.chamber import *
-from hrap.nozzle  import *
-from hrap.units   import _in, _ft, _lbf, _atm
+import burnfront.core as core
+import burnfront.fluid as fluid
+from burnfront.tank    import *
+from burnfront.grain   import *
+from burnfront.chamber import *
+from burnfront.nozzle  import *
+from burnfront.units   import _in, _ft, _lbf, _atm
 
 
 jax.config.update("jax_enable_x64", True)
 # np.random.seed(42)
-hrap_root = Path(imp_files('hrap'))
+hrap_root = Path(imp_files('burnfront'))
 
 # Experimentally curve-fit saturated nitrous properties, applicable range is -90 to 36 Celsius
 # Ported from HRAP, originally from ?
@@ -123,7 +123,7 @@ chem = chem['s'][0][0]
 chem_OF = chem['prop_OF'].ravel()
 chem_Pc = chem['prop_Pc'].ravel()
 # .mat tables are stored [Pc, OF]; orient them to the (OF, Pc) interpolation grid
-from hrap.chemtab import orient
+from burnfront.chemtab import orient
 chem_k, chem_M, chem_T = [orient(chem[k], chem_OF.size, chem_Pc.size) for k in ('prop_k', 'prop_M', 'prop_T')]
 
 

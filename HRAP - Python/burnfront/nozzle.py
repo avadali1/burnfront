@@ -14,13 +14,13 @@ Thrust: F = eff * [mdot u_e + (p_e - Pa) A_e]
   unchoked: subsonic exit at Pa.
 Expansion models (s['noz_expansion']):
   'frozen'      : constant-gamma isentropic expansion of the chamber gas (gamma, R, T from the chamber)
-  'equilibrium' : shifting-equilibrium expansion from hrap.expansion tables (Cantera, validated against
+  'equilibrium' : shifting-equilibrium expansion from burnfront.expansion tables (Cantera, validated against
                   NASA CEA): exit/separation velocity u = U(OF, Pc, p/p*) c*, area ratio and throat
                   pressure from the same tables, choked flow with the equilibrium c*. Blended with the
                   frozen result by the chamber's combustion-product mass fraction (startup air,
                   cold oxidizer flow), and the frozen subsonic formulas when unchoked.
 """
-from hrap.core import store_x, make_part, StaticVar
+from burnfront.core import store_x, make_part, StaticVar
 
 import numpy as np
 
@@ -206,7 +206,7 @@ def make_cd_nozzle(**kwargs):
 
 def expansion_kwargs(table):
     """make_cd_nozzle keyword arguments for shifting-equilibrium expansion from an
-    hrap.expansion.ExpansionTable."""
+    burnfront.expansion.ExpansionTable."""
     return dict(expansion=StaticVar('equilibrium'), eq_OF=np.asarray(table.OF), eq_Pc=np.asarray(table.Pc),
                 eq_rho=np.asarray(table.rho), eq_U=np.asarray(table.U), eq_LE=np.asarray(table.LE),
                 eq_rt=np.asarray(table.r_t), eq_fc=np.asarray(table.cstar/table.cstar_gamma))

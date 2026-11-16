@@ -3,7 +3,7 @@
 For a single cross-section with exact 2D signed distance phi, the uniform in-plane offset
 {phi < d} is the exact level-set (Hopf-Lax) solution, so A(d) and P(d) = dA/dd are tabulated once
 over the whole web with the same sub-cell measure as the 3D core. Each axial station carries its own
-depth d(z) and uses the same axial flux model as 3D (hrap.burn3d.flow). This is the 3D algorithm
+depth d(z) and uses the same axial flux model as 3D (burnfront.burn3d.flow). This is the 3D algorithm
 restricted to z-invariant geometry, minus re-tabulation.
 """
 from dataclasses import dataclass
@@ -12,11 +12,11 @@ import numpy as np
 from scipy import ndimage
 from skimage import measure as skmeasure
 
-from hrap.burn3d import measure
-from hrap.burn3d.axial import station_eval
-from hrap.burn3d.burn import BurnResult
-from hrap.burn3d.grid import Grid3D
-from hrap.burn3d import shapes as _shapes
+from burnfront.burn3d import measure
+from burnfront.burn3d.axial import station_eval
+from burnfront.burn3d.burn import BurnResult
+from burnfront.burn3d.grid import Grid3D
+from burnfront.burn3d import shapes as _shapes
 
 
 @dataclass
@@ -194,7 +194,7 @@ def burn_section(table, L, n_z, law, mdot_ox, t_end, dt, kappa=None):
             hit = dn >= table.web_contact
             frac = np.min(np.clip((table.web_contact - d[hit])/np.maximum(dn[hit] - d[hit], 1e-300), 0, 1))
             t_bt = t + frac*h
-            from hrap.burn3d.measure import hermite_eval
+            from burnfront.burn3d.measure import hermite_eval
             A_bt, _ = hermite_eval(A_tab, M_tab, table.dd, d + frac*(dn - d))
             m_bt = rho*float(np.sum(w*(A_env - A_bt)))
         d, m, t = dn, mn, t + h

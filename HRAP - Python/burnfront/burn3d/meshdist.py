@@ -135,7 +135,7 @@ def signed_distance_on_grid(grid, vertices, faces, sign, mask=None, far='sign'):
     if mask.all():
         phi = np.empty(shape)
     elif far == 'fmm':
-        from hrap.burn3d.levelset import reinitialize
+        from burnfront.burn3d.levelset import reinitialize
         phi = reinitialize(sgn, grid.h)
     else:
         phi = sign.copy()

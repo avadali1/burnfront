@@ -9,13 +9,13 @@ import numpy as np
 import pytest
 import scipy.io
 
-import hrap.core as core
-from hrap.burn3d import shapes, RegressionLaw, burn_prescribed
-from hrap.burn3d.section import Section2D, burn_section
-from hrap.grain_axial import make_section_grain
+import burnfront.core as core
+from burnfront.burn3d import shapes, RegressionLaw, burn_prescribed
+from burnfront.burn3d.section import Section2D, burn_section
+from burnfront.grain_axial import make_section_grain
 
 OD, R0 = 0.1, 0.02
-HRAP_ROOT = Path(imp_files('hrap'))
+HRAP_ROOT = Path(imp_files('burnfront'))
 
 
 def _stub(typ, **x):
@@ -99,7 +99,7 @@ def test_jax_axial_grain_matches_numpy(twist):
 
 
 def test_bake_d2a_circle_consistent():
-    from hrap.grain import bake_d2a
+    from burnfront.grain import bake_d2a
     t = np.linspace(0, 2*np.pi, 720, endpoint=False)
     poly = np.stack([R0*np.cos(t), R0*np.sin(t)], 1)
     A0, d, P, _ = bake_d2a(OD, poly, 256, 200)
@@ -115,7 +115,7 @@ def test_bake_d2a_circle_consistent():
 
 def test_image_baking_subpixel_accuracy(tmp_path):
     import cv2
-    from hrap.grain import bake_arbitrary_d2a
+    from burnfront.grain import bake_arbitrary_d2a
     S, N = 4, 640
     yy, xx = (np.mgrid[0:N*S, 0:N*S] + 0.5)/S
     r = np.hypot(xx - 320, yy - 320)
@@ -134,16 +134,16 @@ def test_image_baking_subpixel_accuracy(tmp_path):
 
 def test_full_engine_2d_mode_mass_and_cstar_balance():
     """ABS 2D-mode grain (6-point star) with an 80%-liquid N2O tank, chamber and nozzle."""
-    import hrap.fluid as fluid
-    from hrap.tank import make_sat_tank
-    from hrap.chamber import make_chamber
-    from hrap.nozzle import make_cd_nozzle
-    from hrap.units import _in, _ft
+    import burnfront.fluid as fluid
+    from burnfront.tank import make_sat_tank
+    from burnfront.chamber import make_chamber
+    from burnfront.nozzle import make_cd_nozzle
+    from burnfront.units import _in, _ft
     from jax.scipy.interpolate import RegularGridInterpolator
 
     c = scipy.io.loadmat(HRAP_ROOT/'resources'/'propellant_configs'/'ABS.mat')['s'][0][0]
     grid = (c['prop_OF'].ravel(), c['prop_Pc'].ravel())
-    from hrap.chemtab import mat_interpolators
+    from burnfront.chemtab import mat_interpolators
     ik, iM, iT = mat_interpolators(HRAP_ROOT/'resources'/'propellant_configs'/'ABS.mat')
     law = RegressionLaw.from_mat(HRAP_ROOT/'resources'/'propellant_configs'/'ABS.mat')
     get_sat = fluid.bake_sat_coolprop('NitrousOxide', np.linspace(183.0, 309.0, 20))

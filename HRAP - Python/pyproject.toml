@@ -3,12 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
-exclude = ["hrap/gui/frontend/node_modules"] # TODO: want to include dist but remove everything else, dist needs to be at higher level
+exclude = ["burnfront/gui/frontend/node_modules"] # TODO: want to include dist but remove everything else, dist needs to be at higher level
 #[tool.setuptools]
-#packages = ["hrap", "hrap.gui", "hrap.resources", "hrap.resources.fonts", "hrap.resources.fonts", "hrap.resources.propellant_config", "hrap.resources.validation"]
+#packages = ["burnfront", "burnfront.gui", "burnfront.resources", "burnfront.resources.fonts", "burnfront.resources.fonts", "burnfront.resources.propellant_config", "burnfront.resources.validation"]
 
 [project]
-name = "hrap"
+name = "burnfront"
 version = "0.1.8"
 
 # dynamic = ["version"]
@@ -31,11 +31,14 @@ dependencies = [
 requires-python = ">= 3.10"
 
 authors = [
+    {name = "Arushi Vadali"},
     {name = "Drew Nickel"},
     {name = "Thomas A. Scott"},
 ]
+license = {text = "GPL-3.0-or-later"}
+readme = "README.md"
 
-description = "HRAP is a versatile tool for simulation of hybrid rocket engines."
+description = "Burnfront: 3D hybrid rocket motor simulator (a modified version of HRAP)."
 
 [project.optional-dependencies]
 # 3D burn simulation: level-set SDF, STL/STEP import
@@ -52,8 +55,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/rnickel1/HRAP_Source"
+Homepage = "https://github.com/avadali1/burnfront"
+"Original HRAP" = "https://github.com/rnickel1/HRAP_Source"
 
 [project.scripts]
-hrap = "hrap.gui.app:main"
-hrap-legacy = "hrap.gui.main:main"
+burnfront = "burnfront.gui.app:main"
+burnfront-legacy = "burnfront.gui.main:main"
