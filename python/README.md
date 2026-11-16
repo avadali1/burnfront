@@ -25,7 +25,7 @@ Python 3.10 or newer is required. Burnfront is not on PyPI yet (note that `pip i
 **Quick install from GitHub** (no clone needed):
 
 ```
-python -m pip install "burnfront[3d] @ git+https://github.com/avadali1/burnfront.git#subdirectory=HRAP%20-%20Python"
+python -m pip install "burnfront[3d] @ git+https://github.com/avadali1/burnfront.git#subdirectory=python"
 ```
 
 **From a clone** (for development):
@@ -33,7 +33,7 @@ python -m pip install "burnfront[3d] @ git+https://github.com/avadali1/burnfront
 ```
 git clone https://github.com/avadali1/burnfront.git
 cd burnfront
-cd "HRAP - Python"
+cd python
 python -m venv .venv
 .venv\Scripts\activate            # Windows   (Linux/macOS: source .venv/bin/activate)
 python -m pip install --upgrade pip

@@ -8,7 +8,7 @@ The name comes from the main addition: the burning surface of the fuel grain (th
 
 ## Python version
 
-The Python version is where all of Burnfront's work is. See [HRAP - Python/README.md](HRAP%20-%20Python/README.md) for installation and usage.
+The Python version is where all of Burnfront's work is. See [python/README.md](python/README.md) for installation and usage.
 
 Compared with HRAP, it adds:
 - **3D fuel-grain burn simulation** from STEP/STL CAD files or analytic ports, including twisted and helical ports and multi-port grains. A fast 2D outline mode is also available.
@@ -19,7 +19,7 @@ Compared with HRAP, it adds:
 - **Parallel parameter sweeps** written to CSV.
 - **A GUI** for all of the above. Start it with `burnfront`.
 
-The Python code lives in the `HRAP - Python` folder (the name is kept from HRAP); the package and command are `burnfront`.
+The Python code lives in the `python` folder; the package and command are `burnfront`.
 
 ## What Burnfront changes
 
@@ -42,7 +42,7 @@ The Python code lives in the `HRAP - Python` folder (the name is kept from HRAP)
 
 **Unchanged.** The MATLAB version (below) and the original Python GUI (`burnfront-legacy`) are kept as they were in HRAP.
 
-Results from HRAP's Python version are not comparable with Burnfront's (see "Changes that affect results" in the [Python README](HRAP%20-%20Python/README.md#changes-that-affect-results)).
+Results from HRAP's Python version are not comparable with Burnfront's (see "Changes that affect results" in the [Python README](python/README.md#changes-that-affect-results)).
 
 ## MATLAB version (original HRAP, unmodified)
 
@@ -86,7 +86,7 @@ Help is welcome in these areas:
 **Burnfront** modifications: Arushi Vadali.
 
 **Third-party material included:**
-- The Bubblegum Sans font, by Angel Koziupa and Alejandro Paul, under the SIL Open Font License. Its license is in `HRAP - Python/burnfront/resources/fonts/BubblegumSans_OFL.txt`.
+- The Bubblegum Sans font, by Angel Koziupa and Alejandro Paul, under the SIL Open Font License. Its license is in `python/burnfront/resources/fonts/BubblegumSans_OFL.txt`.
 - The bundled propellant tables were generated with NASA CEA, and the equilibrium expansion uses NASA thermodynamic data through Cantera.
 
 ## Repository history
