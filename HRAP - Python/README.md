@@ -1,6 +1,10 @@
-# HRAP (Python): Hybrid Rocket Analysis Program
+# Burnfront (Python)
 
-HRAP simulates self-pressurizing hybrid rocket motors: a saturated N2O tank, the injector, a regressing fuel grain, the combustion chamber and the nozzle, integrated together in time. This version adds the following:
+Burnfront simulates self-pressurizing hybrid rocket motors: a saturated N2O tank, the injector, a regressing fuel grain, the combustion chamber and the nozzle, integrated together in time.
+
+It is a modified version of the Python Hybrid Rocket Analysis Program (HRAP) by Robert Nickel and contributors; its package lists Drew Nickel and Thomas A. Scott as authors ([github.com/rnickel1/HRAP_Source](https://github.com/rnickel1/HRAP_Source)), changed by Arushi Vadali starting in November 2026. It is licensed under GPL v3; see the [top-level README](../README.md#license) for credits and license terms. The Python package and its commands are still named `hrap`.
+
+Compared with HRAP, it adds the following:
 
 - **A 3D burn simulation of the fuel grain.** It handles any port shape, including STEP/STL CAD files, twisted stars, helical ports and multi-port grains. The 2D outline model is kept as a fast mode.
 - **Energy-consistent tank and chamber models.**
@@ -10,13 +14,13 @@ HRAP simulates self-pressurizing hybrid rocket motors: a saturated N2O tank, the
 - **Parameter sweeps** that run in parallel and write CSV.
 - **A GUI** that exposes all of the above.
 
-> **Results from older versions are not comparable.** Several bugs that affected every simulation were fixed (see [Changes that affect results](#changes-that-affect-results)). In particular, earlier versions read the propellant chemistry tables transposed, so chamber temperature, c* and Isp were wrong. Re-run any motor you designed with an older version.
+> **Results from HRAP's Python version are not comparable.** Several bugs that affected every simulation were fixed (see [Changes that affect results](#changes-that-affect-results)). In particular, earlier versions read the propellant chemistry tables transposed, so chamber temperature, c* and Isp were wrong. Re-run any motor you designed with an older version.
 
 ---
 
 ## Installation
 
-This version is not on PyPI: `pip install hrap` installs the original upstream package. Install from this folder instead. Python 3.10 or newer is required.
+Burnfront is not on PyPI: `pip install hrap` installs the original HRAP package. Install from this folder instead. Python 3.10 or newer is required.
 
 ```
 cd "HRAP - Python"
@@ -167,7 +171,7 @@ The full suite takes about 11 minutes. `tests/test_expansion.py` needs `rocketce
 
 ## Changes that affect results
 
-Fixed since the upstream version, roughly in order of impact:
+Fixed in Burnfront relative to HRAP, roughly in order of impact:
 
 1. **Chemistry tables were read transposed.** `.mat` files store k, M and T as [Pc, O/F], but the interpolators assumed [O/F, Pc]. Every run used wrong chamber properties; for example, ABS at O/F 6 and 20 bar gave 2093 K instead of 3247 K.
 2. **Chamber pressure model.** The legacy `dP/P = dm/m − dV/V` form kept the initial air's R·T, which meant about 12× too much stored gas and pressure transients about 12× too slow. The nozzle flow was also read one evaluation late.
